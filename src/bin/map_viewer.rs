@@ -21,7 +21,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 
     commands.spawn(LdtkWorldBundle {
-        ldtk_handle: asset_server.load("test1.ldtk"),
+        ldtk_handle: asset_server.load("test2.ldtk"),
         ..Default::default()
     });
 }
