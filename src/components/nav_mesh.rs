@@ -1,6 +1,7 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_ecs_tilemap::tiles::TileStorage;
+use bevy_rapier2d::geometry::Collider;
 use itertools::Itertools;
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
@@ -18,6 +19,7 @@ pub enum NavNode {
         down: Entity,
         down_kind: EdgeNeighborKind,
         back: Entity,
+        is_left_side: bool,
     },
     HorizontalEdge {
         left: Entity,
@@ -25,6 +27,7 @@ pub enum NavNode {
         right: Entity,
         right_kind: EdgeNeighborKind,
         back: Entity,
+        is_up_side: bool,
     },
 }
 
@@ -49,19 +52,9 @@ impl NavNode {
                 down,
                 right,
             } => vec![*up, *left, *down, *right],
-            NavNode::VerticalEdge {
-                up,
-                up_kind: _,
-                down,
-                down_kind: _,
-                back,
-            } => vec![*up, *down, *back],
+            NavNode::VerticalEdge { up, down, back, .. } => vec![*up, *down, *back],
             NavNode::HorizontalEdge {
-                left,
-                left_kind: _,
-                right,
-                right_kind: _,
-                back,
+                left, right, back, ..
             } => vec![*left, *right, *back],
         }
     }
@@ -80,7 +73,7 @@ pub fn spawn_nav_mesh(
     mut level_events: EventReader<LevelEvent>,
     ldtk_project_assets: Res<Assets<LdtkProject>>,
     ldtk_projects: Query<&Handle<LdtkProject>>,
-    tile_storage: Query<&TileStorage>,
+    tile_storage: Query<(&TileStorage, &Name)>,
 ) {
     for level_event in level_events.read() {
         let LevelEvent::Transformed(level_iid) = level_event else {
@@ -112,7 +105,10 @@ pub fn spawn_nav_mesh(
         let grid_is_empty: &[bool] = grid_is_empty.as_ref();
 
         let grid_entity = tile_storage
-            .single()
+            .iter()
+            .find(|(_, name)| name.as_str() == "Structure")
+            .unwrap()
+            .0
             .iter()
             .map(|entity| entity.unwrap())
             .collect_vec();
@@ -214,6 +210,7 @@ pub fn spawn_nav_mesh(
                         right,
                         right_kind,
                         back,
+                        is_up_side: true,
                     },
                     TransformBundle::from_transform(Transform::from_xyz(0., 8., 0.)),
                 ));
@@ -263,6 +260,7 @@ pub fn spawn_nav_mesh(
                         right,
                         right_kind,
                         back,
+                        is_up_side: false,
                     },
                     TransformBundle::from_transform(Transform::from_xyz(0., -8., 0.)),
                 ));
@@ -309,6 +307,7 @@ pub fn spawn_nav_mesh(
                         down,
                         down_kind,
                         back,
+                        is_left_side: true,
                     },
                     TransformBundle::from_transform(Transform::from_xyz(-8., 0., 0.)),
                 ));
@@ -358,6 +357,7 @@ pub fn spawn_nav_mesh(
                         down,
                         down_kind,
                         back,
+                        is_left_side: false,
                     },
                     TransformBundle::from_transform(Transform::from_xyz(8., 0., 0.)),
                 ));
@@ -392,23 +392,13 @@ pub fn debug_nav_mesh(
                 line_between(id, *left, Color::GREEN, &query_transform, &mut gizmos);
                 line_between(id, *right, Color::GREEN, &query_transform, &mut gizmos);
             }
-            NavNode::VerticalEdge {
-                up,
-                up_kind: _,
-                down,
-                down_kind: _,
-                back,
-            } => {
+            NavNode::VerticalEdge { up, down, back, .. } => {
                 line_between(id, *up, Color::YELLOW, &query_transform, &mut gizmos);
                 line_between(id, *down, Color::YELLOW, &query_transform, &mut gizmos);
                 line_between(id, *back, Color::YELLOW, &query_transform, &mut gizmos);
             }
             NavNode::HorizontalEdge {
-                left,
-                left_kind: _,
-                right,
-                right_kind: _,
-                back,
+                left, right, back, ..
             } => {
                 line_between(id, *left, Color::YELLOW, &query_transform, &mut gizmos);
                 line_between(id, *right, Color::YELLOW, &query_transform, &mut gizmos);
@@ -513,5 +503,67 @@ impl Index2d {
             grid_width: self.grid_width,
             grid_height: self.grid_height,
         })
+    }
+}
+
+pub fn insert_edge_colliders(
+    mut commands: Commands,
+    nodes: Query<(Entity, &NavNode), Added<NavNode>>,
+) {
+    for (id, node) in nodes.iter() {
+        match *node {
+            NavNode::Background { .. } => (),
+            NavNode::VerticalEdge {
+                up_kind,
+                down_kind,
+                is_left_side,
+                ..
+            } => {
+                let mut up_pos = match up_kind {
+                    EdgeNeighborKind::Straight => Vec2::new(0., 8.),
+                    EdgeNeighborKind::Concave => Vec2::new(4., 4.),
+                    EdgeNeighborKind::Convex => Vec2::new(-4., 4.),
+                };
+                let mut down_pos = match down_kind {
+                    EdgeNeighborKind::Straight => Vec2::new(0., -8.),
+                    EdgeNeighborKind::Concave => Vec2::new(4., -4.),
+                    EdgeNeighborKind::Convex => Vec2::new(-4., -4.),
+                };
+                if !is_left_side {
+                    up_pos.x = -up_pos.x;
+                    down_pos.x = -down_pos.x;
+                }
+                let middle_pos = Vec2::ZERO;
+                commands
+                    .entity(id)
+                    .insert(Collider::polyline(vec![up_pos, middle_pos, down_pos], None));
+            }
+            NavNode::HorizontalEdge {
+                left_kind,
+                right_kind,
+                is_up_side,
+                ..
+            } => {
+                let mut left_pos = match left_kind {
+                    EdgeNeighborKind::Straight => Vec2::new(-8., 0.),
+                    EdgeNeighborKind::Concave => Vec2::new(-4., -4.),
+                    EdgeNeighborKind::Convex => Vec2::new(-4., 4.),
+                };
+                let mut right_pos = match right_kind {
+                    EdgeNeighborKind::Straight => Vec2::new(8., 0.),
+                    EdgeNeighborKind::Concave => Vec2::new(4., -4.),
+                    EdgeNeighborKind::Convex => Vec2::new(4., 4.),
+                };
+                if !is_up_side {
+                    left_pos.y = -left_pos.y;
+                    right_pos.y = -right_pos.y;
+                }
+                let middle_pos = Vec2::ZERO;
+                commands.entity(id).insert(Collider::polyline(
+                    vec![left_pos, middle_pos, right_pos],
+                    None,
+                ));
+            }
+        }
     }
 }

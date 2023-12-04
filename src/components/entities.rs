@@ -1,5 +1,9 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
+use bevy_rapier2d::{
+    control::KinematicCharacterController,
+    geometry::Collider,
+};
 
 /// Attach sprites to the newly spawned entities
 pub fn setup_entity_sprites(
@@ -16,10 +20,27 @@ pub fn setup_entity_sprites(
     }
 }
 
-#[derive(Bundle, Clone, Default, LdtkEntity)]
+#[derive(Bundle, Clone, LdtkEntity)]
 pub struct PlayerBundle {
     player: Player,
     sprite: SpriteBundle,
+    // rigid_body: RigidBody,
+    controller: KinematicCharacterController,
+    collider: Collider,
+    // velocity: Velocity,
+}
+
+impl Default for PlayerBundle {
+    fn default() -> Self {
+        Self {
+            player: Default::default(),
+            sprite: Default::default(),
+            // rigid_body: RigidBody::KinematicPositionBased,
+            controller: Default::default(),
+            collider: Collider::cuboid(4., 8.),
+            // velocity: Default::default(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Default, Component, Reflect)]

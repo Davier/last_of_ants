@@ -1,12 +1,13 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_rapier2d::{control::KinematicCharacterController, render::RapierDebugRenderPlugin};
 use last_of_ants::{
     components::{
-        entities::AntBundle,
+        entities::{AntBundle, Player},
         nav_mesh::{debug_nav_mesh, NavNode},
     },
-    helpers::{on_key_just_pressed, toggle_on_key},
+    helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     GamePlugin,
 };
 use rand::seq::IteratorRandom;
@@ -14,10 +15,9 @@ use rand::seq::IteratorRandom;
 fn main() {
     App::new()
         .add_plugins((
-            DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites?
-            LdtkPlugin,
             GamePlugin,
             WorldInspectorPlugin::default().run_if(toggle_on_key(KeyCode::I)),
+            RapierDebugRenderPlugin::default().disabled(),
         ))
         .add_systems(Startup, setup)
         .add_systems(
@@ -26,6 +26,8 @@ fn main() {
                 spawn_ants_on_navmesh.run_if(on_key_just_pressed(KeyCode::Space)),
                 move_ants_on_mesh,
                 debug_nav_mesh.run_if(toggle_on_key(KeyCode::N)),
+                toggle_physics_debug,
+                player_movement,
             ),
         )
         .insert_resource(LevelSelection::index(0))
@@ -34,17 +36,20 @@ fn main() {
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(0., 200., 0.),
+        transform: Transform::from_xyz(500., 500., 0.),
         ..default()
     });
 
     commands.spawn(LdtkWorldBundle {
-        ldtk_handle: asset_server.load("test2.ldtk"),
+        ldtk_handle: asset_server.load("Ant nest.ldtk"),
         ..Default::default()
     });
 
     commands.spawn(TextBundle::from_section(
-        "Press SPACE to spawn ants\nPress N to show the navigation mesh\nPress I to show the world inspector",
+        "Press SPACE to spawn ants\n\
+        Press N to show the navigation mesh\n\
+        Press I to show the world inspector\n\
+        Press P to show the physics debug view",
         default(),
     ));
 }
@@ -69,7 +74,7 @@ fn spawn_ants_on_navmesh(
         };
 
         let mut transform = node_pos.reparented_to(entities_holder_pos);
-        transform.translation.z += 1.;
+        transform.translation.z += 10.;
         commands
             .spawn((
                 AntBundle {
@@ -114,5 +119,27 @@ fn move_ants_on_mesh(
         let vector = (pos_goal_xy - pos_current_xy).normalize() * speed;
         pos_current.translation.x += vector.x;
         pos_current.translation.y += vector.y;
+    }
+}
+
+fn player_movement(
+    mut controllers: Query<&mut KinematicCharacterController, With<Player>>,
+    inputs: Res<Input<KeyCode>>,
+) {
+    let mut delta_pos = Vec2::new(0., -2.);
+    if inputs.pressed(KeyCode::W) {
+        delta_pos.y += 1.;
+    }
+    if inputs.pressed(KeyCode::A) {
+        delta_pos.x -= 1.;
+    }
+    if inputs.pressed(KeyCode::S) {
+        delta_pos.y -= 1.;
+    }
+    if inputs.pressed(KeyCode::D) {
+        delta_pos.x += 1.;
+    }
+    for mut controller in controllers.iter_mut() {
+        controller.translation = Some(delta_pos);
     }
 }

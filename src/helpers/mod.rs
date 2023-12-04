@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_rapier2d::render::DebugRenderContext;
 
 pub fn on_key_just_pressed(key: KeyCode) -> impl FnMut(Res<Input<KeyCode>>) -> bool + Clone {
     move |inputs| inputs.just_pressed(key)
@@ -10,5 +11,11 @@ pub fn toggle_on_key(key: KeyCode) -> impl FnMut(Res<Input<KeyCode>>, Local<bool
             *is_active = !*is_active;
         }
         *is_active
+    }
+}
+
+pub fn toggle_physics_debug(mut config: ResMut<DebugRenderContext>, inputs: Res<Input<KeyCode>>) {
+    if inputs.just_pressed(KeyCode::P) {
+        config.enabled = !config.enabled;
     }
 }
