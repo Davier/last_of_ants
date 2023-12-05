@@ -70,49 +70,53 @@ fn player_movement(
         let right_pressed = inputs.pressed(KeyCode::D);
         let up_pressed = inputs.pressed(KeyCode::W);
         let down_pressed = inputs.pressed(KeyCode::S);
+        let v = &mut velocity.linvel;
         // info!("{:5?} | {:?}", is_on_ground, is_on_wall);
 
         // Reset velocity
         if is_on_ground {
-            velocity.linvel.x = 0.;
-            velocity.linvel.y = 0.;
+            v.x = 0.;
+            v.y = 0.;
         }
-        if player.is_on_left_wall && velocity.linvel.x < 0. {
-            velocity.linvel.x = 0.;
+        if player.is_on_ceiling {
+            v.y = 0.;
         }
-        if player.is_on_right_wall && velocity.linvel.x > 0. {
-            velocity.linvel.x = 0.;
+        if player.is_on_left_wall && v.x < 0. {
+            v.x = 0.;
+        }
+        if player.is_on_right_wall && v.x > 0. {
+            v.x = 0.;
         }
 
         // Apply gravity
-        velocity.linvel.y += gravity * dt;
-        if is_on_wall && !down_pressed && velocity.linvel.y < -max_sliding_velocity {
+        v.y += gravity * dt;
+        if is_on_wall && !down_pressed && v.y < -max_sliding_velocity {
             // info!("Sliding");
-            velocity.linvel.y = -max_sliding_velocity;
+            v.y = -max_sliding_velocity;
         }
 
         // Move from inputs
         if right_pressed && (is_on_ground) {
-            velocity.linvel.x += walk_speed;
+            v.x += walk_speed;
         };
         if left_pressed && (is_on_ground) {
-            velocity.linvel.x -= walk_speed;
+            v.x -= walk_speed;
         };
         if space_pressed {
             if is_on_ground {
-                velocity.linvel.y = jump_impulse;
-            } else if player.is_on_left_wall && right_pressed && velocity.linvel.x < 0.01 {
-                velocity.linvel.y = jump_impulse;
-                velocity.linvel.x = jump_impulse / 3.;
+                v.y = jump_impulse;
+            } else if player.is_on_left_wall && right_pressed && v.x < 0.01 {
+                v.y = jump_impulse;
+                v.x = jump_impulse / 3.;
                 // info!("Wall jump left");
-            } else if player.is_on_right_wall && left_pressed && velocity.linvel.x > -0.01 {
-                velocity.linvel.y = jump_impulse;
-                velocity.linvel.x = -jump_impulse / 3.;
+            } else if player.is_on_right_wall && left_pressed && v.x > -0.01 {
+                v.y = jump_impulse;
+                v.x = -jump_impulse / 3.;
                 // info!("Wall jump right");
             }
         }
 
-        let delta_position = velocity.linvel * dt;
+        let delta_position = *v * dt;
         // dbg!(&delta_position);
         controller.translation = Some(delta_position);
     }

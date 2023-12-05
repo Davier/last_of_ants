@@ -54,6 +54,7 @@ pub fn update_player_sensor(
         };
         player.is_on_left_wall = false;
         player.is_on_right_wall = false;
+        player.is_on_ceiling = false;
         player.on_ground.clear();
         player.on_wall.clear();
         for colliding_entity in colliding_entities.iter() {
@@ -69,8 +70,11 @@ pub fn update_player_sensor(
                         player.is_on_right_wall = true;
                     }
                 }
-                NavNode::HorizontalEdge { .. } => {
+                NavNode::HorizontalEdge { is_up_side: false, .. } => {
                     player.on_ground.insert(colliding_entity);
+                }
+                NavNode::HorizontalEdge { is_up_side: true, .. } => {
+                    player.is_on_ceiling = true;
                 }
                 _ => (),
             }
@@ -85,6 +89,7 @@ pub struct Player {
     // pub is_grounded: bool,
     pub is_on_left_wall: bool,
     pub is_on_right_wall: bool,
+    pub is_on_ceiling: bool,
 }
 
 #[derive(Debug, Copy, Clone, Reflect, Component)]
