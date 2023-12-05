@@ -516,55 +516,15 @@ pub fn insert_edge_colliders(
     for (id, node) in nodes.iter() {
         match *node {
             NavNode::Background { .. } => (),
-            NavNode::VerticalEdge {
-                up_kind,
-                down_kind,
-                is_left_side,
-                ..
-            } => {
-                let mut up_pos = match up_kind {
-                    EdgeNeighborKind::Straight => Vec2::new(0., 8.),
-                    EdgeNeighborKind::Concave => Vec2::new(4., 4.),
-                    EdgeNeighborKind::Convex => Vec2::new(-4., 4.),
-                };
-                let mut down_pos = match down_kind {
-                    EdgeNeighborKind::Straight => Vec2::new(0., -8.),
-                    EdgeNeighborKind::Concave => Vec2::new(4., -4.),
-                    EdgeNeighborKind::Convex => Vec2::new(-4., -4.),
-                };
-                if !is_left_side {
-                    up_pos.x = -up_pos.x;
-                    down_pos.x = -down_pos.x;
-                }
-                let middle_pos = Vec2::ZERO;
+            NavNode::VerticalEdge { .. } => {
                 commands.entity(id).insert((
-                    Collider::polyline(vec![up_pos, middle_pos, down_pos], None),
+                    Collider::polyline(vec![Vec2::new(0., 8.), Vec2::new(0., -8.)], None),
                     collision_group,
                 ));
             }
-            NavNode::HorizontalEdge {
-                left_kind,
-                right_kind,
-                is_up_side,
-                ..
-            } => {
-                let mut left_pos = match left_kind {
-                    EdgeNeighborKind::Straight => Vec2::new(-8., 0.),
-                    EdgeNeighborKind::Concave => Vec2::new(-4., -4.),
-                    EdgeNeighborKind::Convex => Vec2::new(-4., 4.),
-                };
-                let mut right_pos = match right_kind {
-                    EdgeNeighborKind::Straight => Vec2::new(8., 0.),
-                    EdgeNeighborKind::Concave => Vec2::new(4., -4.),
-                    EdgeNeighborKind::Convex => Vec2::new(4., 4.),
-                };
-                if !is_up_side {
-                    left_pos.y = -left_pos.y;
-                    right_pos.y = -right_pos.y;
-                }
-                let middle_pos = Vec2::ZERO;
+            NavNode::HorizontalEdge { .. } => {
                 commands.entity(id).insert((
-                    Collider::polyline(vec![left_pos, middle_pos, right_pos], None),
+                    Collider::polyline(vec![Vec2::new(-8., 0.), Vec2::new(8., 0.)], None),
                     collision_group,
                 ));
             }

@@ -5,23 +5,20 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        entities::{update_player_sensor, Player},
-        nav_mesh::debug_nav_mesh,
+        entities::{update_player_sensor, AntBundle, Player},
+        nav_mesh::{debug_nav_mesh, NavNode},
     },
     helpers::{toggle_on_key, toggle_physics_debug},
     GamePlugin,
 };
+use rand::seq::IteratorRandom;
 
 fn main() {
     App::new()
-        // .insert_resource(RapierConfiguration {
-        //     gravity: Vec2::new(0.0, -2000.0),
-        //     ..Default::default()
-        // })
         .add_plugins((
             GamePlugin,
             WorldInspectorPlugin::default().run_if(toggle_on_key(KeyCode::I)),
-            RapierDebugRenderPlugin::default(),
+            RapierDebugRenderPlugin::default().disabled(),
             // FramepacePlugin,
         ))
         .add_systems(Startup, setup)
@@ -51,9 +48,19 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
 }
 
 fn player_movement(
-    mut players: Query<(&mut KinematicCharacterController, &mut Velocity, &Player), With<Player>>,
+    mut players: Query<
+        (
+            &mut KinematicCharacterController,
+            &mut Velocity,
+            &Player,
+            Option<&KinematicCharacterControllerOutput>,
+        ),
+        With<Player>,
+    >,
     inputs: Res<Input<KeyCode>>,
     time: Res<Time>,
+    mut last_time_on_left_wall: Local<f32>,
+    mut last_time_on_right_wall: Local<f32>,
 ) {
     let walk_speed = 160.;
     let fly_speed = 10.;
@@ -61,15 +68,31 @@ fn player_movement(
     let dt = time.delta_seconds();
     let jump_impulse = 8. / dt;
     let max_sliding_velocity = 50.;
+    let jump_tolerance = 0.05; // [s]
 
-    for (mut controller, mut velocity, player) in &mut players {
+    for (mut controller, mut velocity, player, controller_output) in &mut players {
         let is_on_ground = !player.on_ground.is_empty();
         let is_on_wall = !player.on_wall.is_empty();
+        if player.is_on_left_wall {
+            *last_time_on_left_wall = time.elapsed_seconds();
+        }
+        let is_on_left_wall_recently =
+            time.elapsed_seconds() - *last_time_on_left_wall < jump_tolerance;
+        if player.is_on_right_wall {
+            *last_time_on_right_wall = time.elapsed_seconds();
+        }
+        let is_on_right_wall_recently =
+            time.elapsed_seconds() - *last_time_on_right_wall < jump_tolerance;
+        let is_on_ceiling = controller_output
+            .map(|output| output.effective_translation.y < output.desired_translation.y)
+            .unwrap_or(false);
+
         let space_pressed = inputs.pressed(KeyCode::Space);
         let left_pressed = inputs.pressed(KeyCode::A);
         let right_pressed = inputs.pressed(KeyCode::D);
         let up_pressed = inputs.pressed(KeyCode::W);
         let down_pressed = inputs.pressed(KeyCode::S);
+
         let v = &mut velocity.linvel;
         // info!("{:5?} | {:?}", is_on_ground, is_on_wall);
 
@@ -78,7 +101,7 @@ fn player_movement(
             v.x = 0.;
             v.y = 0.;
         }
-        if player.is_on_ceiling {
+        if is_on_ceiling {
             v.y = 0.;
         }
         if player.is_on_left_wall && v.x < 0. {
@@ -96,20 +119,20 @@ fn player_movement(
         }
 
         // Move from inputs
-        if right_pressed && (is_on_ground) {
+        if right_pressed && (is_on_ground || player.is_on_left_wall) {
             v.x += walk_speed;
         };
-        if left_pressed && (is_on_ground) {
+        if left_pressed && (is_on_ground || player.is_on_right_wall) {
             v.x -= walk_speed;
         };
         if space_pressed {
             if is_on_ground {
                 v.y = jump_impulse;
-            } else if player.is_on_left_wall && right_pressed && v.x < 0.01 {
+            } else if is_on_left_wall_recently && right_pressed {
                 v.y = jump_impulse;
                 v.x = jump_impulse / 3.;
                 // info!("Wall jump left");
-            } else if player.is_on_right_wall && left_pressed && v.x > -0.01 {
+            } else if is_on_right_wall_recently && left_pressed {
                 v.y = jump_impulse;
                 v.x = -jump_impulse / 3.;
                 // info!("Wall jump right");

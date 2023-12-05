@@ -1,7 +1,7 @@
 pub mod components;
 pub mod helpers;
 
-use bevy::prelude::*;
+use bevy::{asset::AssetMetaCheck, prelude::*};
 use bevy_ecs_ldtk::{prelude::*, systems::process_ldtk_levels};
 use bevy_rapier2d::prelude::*;
 
@@ -11,7 +11,7 @@ pub struct GamePlugin;
 
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((
+        app.insert_resource(AssetMetaCheck::Never).add_plugins((
             DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites?
             LdtkPlugin,
             RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(16.0), // FIXME: tile size

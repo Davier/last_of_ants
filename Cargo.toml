@@ -16,8 +16,7 @@ opt-level = 3
 codegen-units = 1
 
 [dependencies]
-# bevy = "0.12.1"
-bevy = { version = "0.12.1", features = ["file_watcher", "dynamic_linking"] } 
+bevy = "0.12.1"
 bevy-inspector-egui = "0.21.0"
 bevy_ecs_ldtk = "0.8.0"
 bevy_ecs_tilemap = "0.12"
@@ -29,6 +28,9 @@ rand = "0.8.5"
 [patch.crates-io]
 bevy_ecs_ldtk = { git = "https://github.com/trouv/bevy_ecs_ldtk", branch = "feat/bevy-0.12" }
 bevy_ecs_tilemap = { git = "https://github.com/divark/bevy_ecs_tilemap", branch = "0.12-fixes" }
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+bevy = { version = "0.12.1", features = ["file_watcher", "dynamic_linking"] } 
 
 [[bin]]
 name = "map_viewer"
