@@ -205,6 +205,7 @@ pub fn spawn_nav_mesh(
                     }
                 };
                 let back = grid_entity[tile.i()];
+                debug!("hello");
                 commands.entity(up_edge).insert((
                     NavNode::HorizontalEdge {
                         left,

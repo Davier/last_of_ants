@@ -19,3 +19,4 @@ pub fn toggle_physics_debug(mut config: ResMut<DebugRenderContext>, inputs: Res<
         config.enabled = !config.enabled;
     }
 }
+

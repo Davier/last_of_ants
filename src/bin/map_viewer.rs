@@ -1,11 +1,13 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::render::RapierDebugRenderPlugin;
+use itertools::Itertools;
 use last_of_ants::{
     components::{
         entities::AntBundle,
-        nav_mesh::{debug_nav_mesh, NavNode},
+        nav_mesh::{debug_nav_mesh, spawn_nav_mesh, NavNode},
+        pheromon::{Gradient, Pheromon},
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     GamePlugin,
@@ -23,11 +25,14 @@ fn main() {
         .add_systems(
             Update,
             (
+                init_pheromons,
                 spawn_ants_on_navmesh.run_if(on_key_just_pressed(KeyCode::Space)),
                 move_ants_on_mesh,
+                debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
                 debug_nav_mesh.run_if(toggle_on_key(KeyCode::N)),
                 toggle_physics_debug,
                 camera_movement,
+                update_gradient,
             ),
         )
         .insert_resource(LevelSelection::index(0))
@@ -51,9 +56,19 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Press SPACE to spawn ants\n\
         Press N to show the navigation mesh\n\
         Press I to show the world inspector\n\
-        Press P to show the physics debug view",
+        Press P to show the physics debug view\n\
+        Press H to show the pheromons then click left/right to add/sub",
         default(),
     ));
+}
+
+fn init_pheromons(mut commands: Commands, nodes: Query<(Entity, &NavNode), Added<NavNode>>) {
+    for (id, node) in nodes.iter() {
+        commands
+            .entity(id)
+            .insert(Pheromon::default())
+            .insert(Gradient::default());
+    }
 }
 
 fn spawn_ants_on_navmesh(
@@ -139,4 +154,111 @@ fn camera_movement(
     }
     transform.single_mut().translation.x += delta_pos.x * speed * dt;
     transform.single_mut().translation.y += delta_pos.y * speed * dt;
+}
+
+fn update_gradient(
+    mut query_changed_nodes: Query<(Entity, &NavNode, &Pheromon, &mut Gradient)>,
+    query_pheromon: Query<&Pheromon, With<NavNode>>,
+) {
+    let vn = Vec2::new(0.0, 1.0);
+    let vs = Vec2::new(0.0, -1.0);
+    let ve = Vec2::new(1.0, 0.0);
+    let vw = Vec2::new(-1.0, 0.0);
+
+    for (id, node, ph, mut gd) in query_changed_nodes.iter_mut() {
+        let (n, s, e, w) = match node {
+            NavNode::Background {
+                up,
+                left,
+                down,
+                right,
+            } => (
+                query_pheromon.get(*up).unwrap().0,
+                query_pheromon.get(*down).unwrap().0,
+                query_pheromon.get(*right).unwrap().0,
+                query_pheromon.get(*left).unwrap().0,
+            ),
+            NavNode::HorizontalEdge {
+                left,
+                left_kind,
+                right,
+                right_kind,
+                back,
+                is_up_side,
+            } => (
+                0.0,
+                0.0,
+                query_pheromon.get(*right).unwrap().0,
+                query_pheromon.get(*left).unwrap().0,
+            ),
+            NavNode::VerticalEdge {
+                up,
+                up_kind,
+                down,
+                down_kind,
+                back,
+                is_left_side,
+            } => (
+                query_pheromon.get(*up).unwrap().0,
+                query_pheromon.get(*down).unwrap().0,
+                0.0,
+                0.0,
+            ),
+        };
+
+        if ph.0 >= n.max(s).max(e).max(w) {
+            gd.0 = Vec2::ZERO;
+        } else {
+            gd.0 = n * vn + s * vs + e * ve + w * vw;
+        }
+    }
+}
+
+fn debug_pheromons(
+    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromon, &Gradient)>,
+    query_transform: Query<&GlobalTransform, With<NavNode>>,
+    mut gizmos: Gizmos,
+
+    buttons: Res<Input<MouseButton>>,
+    q_window: Query<&Window, With<PrimaryWindow>>,
+    q_camera: Query<(&Camera, &GlobalTransform)>,
+) {
+    let (camera, camera_transform) = q_camera.single();
+    let window = q_window.single();
+    if let Some(cursor_world_position) = window
+        .cursor_position()
+        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+        .map(|ray| ray.origin.truncate())
+    {
+        let mut distances = query_nodes
+            .iter_mut()
+            .map(|(id, _, ph, gd)| {
+                let pos = query_transform.get(id).unwrap().translation().xy();
+                (id, pos, pos.distance(cursor_world_position), ph, gd)
+            })
+            .collect_vec();
+
+        distances.sort_by(|a, b| a.2.partial_cmp(&b.2).unwrap());
+
+        gizmos.circle_2d(distances[1].1, 0.5, Color::RED);
+        gizmos.circle_2d(distances[2].1, 0.5, Color::RED);
+        gizmos.circle_2d(distances[3].1, 0.5, Color::RED);
+        let closest = &mut distances[0];
+
+        gizmos.circle_2d(closest.1, 0.5, Color::RED);
+        gizmos.ray_2d(cursor_world_position, closest.4 .0, Color::ALICE_BLUE);
+
+        if buttons.just_pressed(MouseButton::Left) {
+            closest.3 .0 += 1.;
+        } else if buttons.just_pressed(MouseButton::Right) {
+            closest.3 .0 = 0.0_f32.max(closest.3 .0 - 1.0);
+        }
+    }
+
+    for (e, n, ph, g) in query_nodes.iter() {
+        let t = query_transform.get(e).unwrap();
+        gizmos.circle_2d(t.translation().xy(), ph.0, Color::PINK);
+        gizmos.ray_2d(t.translation().xy(), g.0 * 2.0, Color::BLUE);
+        debug!("{}", t.translation());
+    }
 }
