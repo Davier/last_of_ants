@@ -1,8 +1,10 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_ecs_tilemap::tiles::TileStorage;
-use bevy_rapier2d::geometry::Collider;
+use bevy_rapier2d::geometry::{Collider, CollisionGroups, Group};
 use itertools::Itertools;
+
+use super::entities::COLLISION_GROUP_WALLS;
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
 #[reflect(Component)]
@@ -510,6 +512,7 @@ pub fn insert_edge_colliders(
     mut commands: Commands,
     nodes: Query<(Entity, &NavNode), Added<NavNode>>,
 ) {
+    let collision_group = CollisionGroups::new(COLLISION_GROUP_WALLS, Group::all());
     for (id, node) in nodes.iter() {
         match *node {
             NavNode::Background { .. } => (),
@@ -534,9 +537,10 @@ pub fn insert_edge_colliders(
                     down_pos.x = -down_pos.x;
                 }
                 let middle_pos = Vec2::ZERO;
-                commands
-                    .entity(id)
-                    .insert(Collider::polyline(vec![up_pos, middle_pos, down_pos], None));
+                commands.entity(id).insert((
+                    Collider::polyline(vec![up_pos, middle_pos, down_pos], None),
+                    collision_group,
+                ));
             }
             NavNode::HorizontalEdge {
                 left_kind,
@@ -559,9 +563,9 @@ pub fn insert_edge_colliders(
                     right_pos.y = -right_pos.y;
                 }
                 let middle_pos = Vec2::ZERO;
-                commands.entity(id).insert(Collider::polyline(
-                    vec![left_pos, middle_pos, right_pos],
-                    None,
+                commands.entity(id).insert((
+                    Collider::polyline(vec![left_pos, middle_pos, right_pos], None),
+                    collision_group,
                 ));
             }
         }

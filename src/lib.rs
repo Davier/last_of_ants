@@ -17,7 +17,14 @@ impl Plugin for GamePlugin {
             RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(16.0), // FIXME: tile size
         ));
         app.add_systems(PreUpdate, spawn_nav_mesh.after(process_ldtk_levels))
-            .add_systems(Update, (setup_entity_sprites, insert_edge_colliders))
+            .add_systems(
+                Update,
+                (
+                    insert_edge_colliders,
+                    update_player_sensor,
+                    spawn_player_sensor,
+                ),
+            )
             .register_ldtk_entity::<PlayerBundle>("Player")
             // .register_ldtk_entity::<AntBundle>("Ant")
             .register_ldtk_int_cell::<TileGround>(1)

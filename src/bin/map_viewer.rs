@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
-use bevy_rapier2d::{control::KinematicCharacterController, render::RapierDebugRenderPlugin};
+use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use last_of_ants::{
     components::{
-        entities::{AntBundle, Player},
+        entities::AntBundle,
         nav_mesh::{debug_nav_mesh, NavNode},
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
@@ -27,7 +27,7 @@ fn main() {
                 move_ants_on_mesh,
                 debug_nav_mesh.run_if(toggle_on_key(KeyCode::N)),
                 toggle_physics_debug,
-                player_movement,
+                camera_movement,
             ),
         )
         .insert_resource(LevelSelection::index(0))
@@ -46,7 +46,9 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     });
 
     commands.spawn(TextBundle::from_section(
-        "Press SPACE to spawn ants\n\
+        "\
+        Use WASD to move\n\
+        Press SPACE to spawn ants\n\
         Press N to show the navigation mesh\n\
         Press I to show the world inspector\n\
         Press P to show the physics debug view",
@@ -75,17 +77,10 @@ fn spawn_ants_on_navmesh(
 
         let mut transform = node_pos.reparented_to(entities_holder_pos);
         transform.translation.z += 10.;
+        let mut bundle = AntBundle::default();
+        bundle.sprite.transform = transform;
         commands
-            .spawn((
-                AntBundle {
-                    sprite: SpriteBundle {
-                        transform,
-                        ..default()
-                    },
-                    ..default()
-                },
-                MovementGoal(id),
-            ))
+            .spawn((bundle, MovementGoal(id)))
             .set_parent(entities_holder);
     }
 }
@@ -122,11 +117,14 @@ fn move_ants_on_mesh(
     }
 }
 
-fn player_movement(
-    mut controllers: Query<&mut KinematicCharacterController, With<Player>>,
+fn camera_movement(
+    mut transform: Query<&mut Transform, With<Camera2d>>,
     inputs: Res<Input<KeyCode>>,
+    time: Res<Time>,
 ) {
-    let mut delta_pos = Vec2::new(0., -2.);
+    let dt = time.delta_seconds();
+    let speed = 400.;
+    let mut delta_pos = Vec2::ZERO;
     if inputs.pressed(KeyCode::W) {
         delta_pos.y += 1.;
     }
@@ -139,7 +137,6 @@ fn player_movement(
     if inputs.pressed(KeyCode::D) {
         delta_pos.x += 1.;
     }
-    for mut controller in controllers.iter_mut() {
-        controller.translation = Some(delta_pos);
-    }
+    transform.single_mut().translation.x += delta_pos.x * speed * dt;
+    transform.single_mut().translation.y += delta_pos.y * speed * dt;
 }
