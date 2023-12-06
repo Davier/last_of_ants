@@ -94,6 +94,7 @@ pub fn spawn_nav_mesh(
             c_hei: grid_height,
             c_wid: grid_width,
             int_grid_csv: grid_int,
+            grid_size: tile_size,
             ..
         } = &level
             .layer_instances()
@@ -102,6 +103,7 @@ pub fn spawn_nav_mesh(
             .unwrap();
         let grid_width = *grid_width;
         let grid_height = *grid_height;
+        let half_tile_size = *tile_size as f32 / 2.;
 
         let grid_is_empty = grid_int.iter().map(|i| *i == EMPTY).collect_vec();
         let grid_is_empty: &[bool] = grid_is_empty.as_ref();
@@ -164,6 +166,7 @@ pub fn spawn_nav_mesh(
             .collect::<Vec<TileEdges>>();
 
         // Make a Node for each tile and edge, linking them to their neighbors' entities
+        let wall_collision_group = CollisionGroups::new(COLLISION_GROUP_WALLS, Group::all());
         for tile in grid_iter {
             // Non empty tiles have no edges
             if !grid_is_empty[tile.i()] {
@@ -214,7 +217,15 @@ pub fn spawn_nav_mesh(
                         back,
                         is_up_side: true,
                     },
-                    TransformBundle::from_transform(Transform::from_xyz(0., 8., 0.)),
+                    TransformBundle::from_transform(Transform::from_xyz(0., half_tile_size, 0.)),
+                    Collider::polyline(
+                        vec![
+                            Vec2::new(-half_tile_size, 0.),
+                            Vec2::new(half_tile_size, 0.),
+                        ],
+                        None,
+                    ),
+                    wall_collision_group,
                 ));
             }
             // Downside edge
@@ -264,7 +275,15 @@ pub fn spawn_nav_mesh(
                         back,
                         is_up_side: false,
                     },
-                    TransformBundle::from_transform(Transform::from_xyz(0., -8., 0.)),
+                    TransformBundle::from_transform(Transform::from_xyz(0., -half_tile_size, 0.)),
+                    Collider::polyline(
+                        vec![
+                            Vec2::new(-half_tile_size, 0.),
+                            Vec2::new(half_tile_size, 0.),
+                        ],
+                        None,
+                    ),
+                    wall_collision_group,
                 ));
             }
             // Left-side edge
@@ -311,7 +330,15 @@ pub fn spawn_nav_mesh(
                         back,
                         is_left_side: true,
                     },
-                    TransformBundle::from_transform(Transform::from_xyz(-8., 0., 0.)),
+                    TransformBundle::from_transform(Transform::from_xyz(-half_tile_size, 0., 0.)),
+                    Collider::polyline(
+                        vec![
+                            Vec2::new(0., half_tile_size),
+                            Vec2::new(0., -half_tile_size),
+                        ],
+                        None,
+                    ),
+                    wall_collision_group,
                 ));
             }
             // Right-side edge
@@ -361,7 +388,15 @@ pub fn spawn_nav_mesh(
                         back,
                         is_left_side: false,
                     },
-                    TransformBundle::from_transform(Transform::from_xyz(8., 0., 0.)),
+                    TransformBundle::from_transform(Transform::from_xyz(half_tile_size, 0., 0.)),
+                    Collider::polyline(
+                        vec![
+                            Vec2::new(0., half_tile_size),
+                            Vec2::new(0., -half_tile_size),
+                        ],
+                        None,
+                    ),
+                    wall_collision_group,
                 ));
             }
             commands
@@ -505,29 +540,5 @@ impl Index2d {
             grid_width: self.grid_width,
             grid_height: self.grid_height,
         })
-    }
-}
-
-pub fn insert_edge_colliders(
-    mut commands: Commands,
-    nodes: Query<(Entity, &NavNode), Added<NavNode>>,
-) {
-    let collision_group = CollisionGroups::new(COLLISION_GROUP_WALLS, Group::all());
-    for (id, node) in nodes.iter() {
-        match *node {
-            NavNode::Background { .. } => (),
-            NavNode::VerticalEdge { .. } => {
-                commands.entity(id).insert((
-                    Collider::polyline(vec![Vec2::new(0., 8.), Vec2::new(0., -8.)], None),
-                    collision_group,
-                ));
-            }
-            NavNode::HorizontalEdge { .. } => {
-                commands.entity(id).insert((
-                    Collider::polyline(vec![Vec2::new(-8., 0.), Vec2::new(8., 0.)], None),
-                    collision_group,
-                ));
-            }
-        }
     }
 }

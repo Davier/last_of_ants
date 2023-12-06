@@ -4,6 +4,8 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
 
+use crate::{PLAYER_SIZE, ANT_SIZE};
+
 use super::nav_mesh::NavNode;
 
 #[derive(Bundle, LdtkEntity)]
@@ -22,12 +24,12 @@ impl Default for PlayerBundle {
             sprite: SpriteBundle {
                 sprite: Sprite {
                     color: Color::GREEN,
-                    custom_size: Some(Vec2::new(8., 16.)),
+                    custom_size: Some(PLAYER_SIZE),
                     ..default()
                 },
                 ..default()
             },
-            collider: Collider::cuboid(4., 8.),
+            collider: Collider::cuboid(PLAYER_SIZE.x / 2., PLAYER_SIZE.y / 2.),
             player: Default::default(),
             controller: KinematicCharacterController {
                 min_slope_slide_angle: PI / 5.,
@@ -142,12 +144,12 @@ impl Default for AntBundle {
             sprite: SpriteBundle {
                 sprite: Sprite {
                     color: Color::BLACK,
-                    custom_size: Some(Vec2::new(8., 8.)),
+                    custom_size: Some(ANT_SIZE),
                     ..default()
                 },
                 ..default()
             },
-            collider: Collider::cuboid(4., 4.),
+            collider: Collider::cuboid(ANT_SIZE.x / 2., ANT_SIZE.y / 2.),
             collision_groups: CollisionGroups::new(
                 COLLISION_GROUP_ANTS,
                 COLLISION_GROUP_PLAYER | COLLISION_GROUP_WALLS,
