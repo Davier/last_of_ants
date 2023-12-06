@@ -1,6 +1,15 @@
 use bevy::prelude::{Component, Vec2};
 
 #[derive(Component)]
+pub struct PheromonBuffer(pub f32);
+
+impl Default for PheromonBuffer {
+    fn default() -> Self {
+        Self(0.)
+    }
+}
+
+#[derive(Component)]
 pub struct Pheromon(pub f32);
 
 impl Default for Pheromon {

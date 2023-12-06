@@ -7,7 +7,7 @@ use last_of_ants::{
     components::{
         ants::{debug_ants, AntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
-        pheromon::{Gradient, Pheromon},
+        pheromon::{Gradient, Pheromon, PheromonBuffer},
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     GamePlugin,
@@ -28,12 +28,13 @@ fn main() {
                 init_pheromons,
                 spawn_ants_on_navmesh.run_if(on_key_just_pressed(KeyCode::Space)),
                 // move_ants_on_mesh,
-                debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
                 debug_nav_mesh.run_if(toggle_on_key(KeyCode::N)),
                 debug_ants.run_if(toggle_on_key(KeyCode::O)),
                 toggle_physics_debug.run_if(on_key_just_pressed(KeyCode::P)),
                 camera_movement,
-                update_gradient,
+                debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
+                pheromon_diffusion.run_if(toggle_on_key(KeyCode::H)),
+                update_gradient.after(pheromon_diffusion),
             ),
         )
         .insert_resource(LevelSelection::index(0))
@@ -69,6 +70,7 @@ fn init_pheromons(mut commands: Commands, nodes: Query<(Entity, &NavNode), Added
         commands
             .entity(id)
             .insert(Pheromon::default())
+            .insert(PheromonBuffer::default())
             .insert(Gradient::default());
     }
 }
@@ -166,6 +168,80 @@ fn camera_movement(
     }
     transform.single_mut().translation.x += delta_pos.x * speed * dt;
     transform.single_mut().translation.y += delta_pos.y * speed * dt;
+}
+
+fn pheromon_diffusion(
+    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromon), With<PheromonBuffer>>,
+    mut query_pheromon_buffers: Query<&mut PheromonBuffer, With<Pheromon>>,
+) {
+    // % going to neighbours
+    let diffusion_rate = 0.01;
+
+    // Take from neighbours
+    for (id, node, ph) in query_nodes.iter() {
+        let diffused = ph.0 * diffusion_rate;
+        if diffused > 0.01 {
+            match node {
+                NavNode::Background {
+                    up,
+                    left,
+                    down,
+                    right,
+                } => {
+                    let diffused = diffused / 4.0;
+                    if ph.0 > 0. {
+                        debug!("id {:?}, ph {}, right: {:?}", id, ph.0, right);
+                    }
+
+                    let mut ph_b_u = query_pheromon_buffers.get_mut(*up).unwrap();
+                    ph_b_u.0 += diffused;
+
+                    let mut ph_b_d = query_pheromon_buffers.get_mut(*down).unwrap();
+                    ph_b_d.0 += diffused;
+
+                    let mut ph_b_r = query_pheromon_buffers.get_mut(*right).unwrap();
+                    ph_b_r.0 += diffused;
+
+                    let mut ph_b_l = query_pheromon_buffers.get_mut(*left).unwrap();
+                    ph_b_l.0 += diffused;
+                }
+                NavNode::HorizontalEdge {
+                    left, right, back, ..
+                } => {
+                    let diffused = diffused / 3.0;
+
+                    let mut ph_b_r = query_pheromon_buffers.get_mut(*right).unwrap();
+                    ph_b_r.0 += diffused;
+
+                    let mut ph_b_l: Mut<'_, PheromonBuffer> =
+                        query_pheromon_buffers.get_mut(*left).unwrap();
+                    ph_b_l.0 += diffused;
+
+                    let mut ph_b_b = query_pheromon_buffers.get_mut(*back).unwrap();
+                    ph_b_b.0 += diffused;
+                }
+                NavNode::VerticalEdge { up, down, back, .. } => {
+                    let diffused = diffused / 2.0;
+
+                    let mut ph_b_u = query_pheromon_buffers.get_mut(*up).unwrap();
+                    ph_b_u.0 += diffused;
+
+                    let mut ph_b_d = query_pheromon_buffers.get_mut(*down).unwrap();
+                    ph_b_d.0 += diffused;
+
+                    let mut ph_b_b = query_pheromon_buffers.get_mut(*back).unwrap();
+                    ph_b_b.0 += diffused;
+                }
+            }
+        }
+    }
+
+    for (id, _, mut ph) in query_nodes.iter_mut() {
+        let mut ph_b = query_pheromon_buffers.get_mut(id).unwrap();
+        debug!("id {:?}, ph {}, ph_b {:?}", id, ph.0, ph_b.0);
+        ph.0 = ph.0 * (1.0 - diffusion_rate) + ph_b.0;
+        ph_b.0 = 0.;
+    }
 }
 
 fn update_gradient(
@@ -271,6 +347,5 @@ fn debug_pheromons(
         let t = query_transform.get(e).unwrap();
         gizmos.circle_2d(t.translation().xy(), ph.0, Color::PINK);
         gizmos.ray_2d(t.translation().xy(), g.0 * 2.0, Color::BLUE);
-        debug!("{}", t.translation());
     }
 }
