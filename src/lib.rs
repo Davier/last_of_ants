@@ -17,6 +17,7 @@ impl Plugin for GamePlugin {
             .register_ldtk_int_cell::<TileEmptyUnderground>(2)
             .register_type::<components::nav_mesh::NavNode>()
             .insert_resource(AssetMetaCheck::Never)
+            .init_resource::<NavMeshLUT>()
             .add_plugins((
                 DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites? (TODO: test)
                 LdtkPlugin,
@@ -44,6 +45,9 @@ pub const PLAYER_SIZE: Vec2 = Vec2::new(8., 16.);
 pub const ANT_SIZE: Vec2 = Vec2::new(8., 8.);
 /// Vertical and horizontal edges will have their [NavNode] placed at `tile_size * WALL_Z_FACTOR / 2.` in Z
 pub const WALL_Z_FACTOR: f32 = 1.;
+
+pub const TILE_INT_EMPTY: i32 = 2;
+pub const TILE_SIZE: f32 = 16.;
 
 pub const COLLISION_GROUP_WALLS: Group = Group::GROUP_1;
 pub const COLLISION_GROUP_PLAYER: Group = Group::GROUP_2;
