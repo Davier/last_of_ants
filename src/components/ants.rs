@@ -6,7 +6,7 @@ use crate::{
     WALL_Z_FACTOR,
 };
 
-use super::nav_mesh::NavNode;
+use super::nav_mesh::{NavMeshLUT, NavNode};
 
 #[derive(Bundle)]
 pub struct AntBundle {
@@ -25,13 +25,14 @@ pub struct Ant {
     pub position_kind: AntPositionKind,
     pub speed: f32,
     pub direction: Vec3,
-    pub current_wall: GlobalTransform,
+    pub current_wall: (Entity, GlobalTransform), // FIXME: use relative transforms
 }
 
 impl AntBundle {
     pub fn new_on_nav_node(
         direction: Vec3,
         speed: f32,
+        nav_node_entity: Entity,
         nav_node: &NavNode,
         nav_node_pos: &GlobalTransform,
         entities_holder_pos: &GlobalTransform,
@@ -60,7 +61,7 @@ impl AntBundle {
                 }
             }
         };
-        let current_wall = *nav_node_pos;
+        let current_wall = (nav_node_entity, *nav_node_pos);
         Self {
             ant: Ant {
                 position_kind,
@@ -92,6 +93,7 @@ impl AntBundle {
         commands: &'c mut Commands<'w, 's>,
         direction: Vec3,
         speed: f32,
+        nav_node_entity: Entity,
         nav_node: &NavNode,
         nav_node_pos: &GlobalTransform,
         entities_holder: Entity,
@@ -100,6 +102,7 @@ impl AntBundle {
         let mut command = commands.spawn(AntBundle::new_on_nav_node(
             direction,
             speed,
+            nav_node_entity,
             nav_node,
             nav_node_pos,
             entities_holder_pos,
@@ -123,15 +126,16 @@ pub fn update_ant_position_kinds(
         &GlobalTransform,
         &mut Transform,
     )>,
-    nav_nodes: Query<(&NavNode, &GlobalTransform)>,
+    nav_nodes: Query<(Entity, &NavNode, &GlobalTransform)>,
+    nav_mesh_lut: Res<NavMeshLUT>,
 ) {
     for (mut ant, colliding_entities, ant_transform_global, mut ant_transform) in ants.iter_mut() {
         // Detect walls and update [AntPosition]
         match ant.position_kind {
             AntPositionKind::Background => {
                 // Find the closest wall that the ant is clipping with
-                if let Some((nav_node, wall_transform_global)) =
-                    find_closest_wall(ant_transform_global, colliding_entities, &nav_nodes, None)
+                if let Some((nav_node_entity, nav_node, wall_transform_global)) =
+                    find_closest_wall(ant_transform_global, colliding_entities, &nav_nodes)
                 {
                     match nav_node {
                         NavNode::Background { .. } => unreachable!(),
@@ -144,7 +148,7 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
-                            ant.current_wall = *wall_transform_global;
+                            ant.current_wall = (nav_node_entity, *wall_transform_global);
                         }
                         NavNode::VerticalEdge { is_left_side, .. } => {
                             let wall_transform_relative =
@@ -155,7 +159,7 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
-                            ant.current_wall = *wall_transform_global;
+                            ant.current_wall = (nav_node_entity, *wall_transform_global);
                         }
                     }
                 }
@@ -168,8 +172,8 @@ pub fn update_ant_position_kinds(
                     ant_transform.translation.y += if is_up_side { -0.02 } else { 0.02 };
                 }
                 // Check the closest colliding wall
-                else if let Some((nav_node, wall_transform_global)) =
-                    find_closest_wall(ant_transform_global, colliding_entities, &nav_nodes, None)
+                else if let Some((nav_node_entity, nav_node, wall_transform_global)) =
+                    find_closest_wall(ant_transform_global, colliding_entities, &nav_nodes)
                 {
                     match nav_node {
                         NavNode::Background { .. } => unreachable!(),
@@ -183,11 +187,11 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
-                            ant.current_wall = *wall_transform_global;
+                            ant.current_wall = (nav_node_entity, *wall_transform_global);
                         }
                         // Otherwise update the transform of wall the ant is currently on
                         NavNode::HorizontalEdge { .. } => {
-                            ant.current_wall = *wall_transform_global;
+                            ant.current_wall = (nav_node_entity, *wall_transform_global);
                         }
                     };
                 }
@@ -195,7 +199,7 @@ pub fn update_ant_position_kinds(
                 else if colliding_entities.is_empty() {
                     let new_wall_is_left_side = ant.direction.x > 0.;
                     let mut wall_transform_relative =
-                        ant.current_wall.reparented_to(ant_transform_global);
+                        ant.current_wall.1.reparented_to(ant_transform_global);
                     wall_transform_relative.translation.y +=
                         TILE_SIZE / 2. * if is_up_side { 1. } else { -1. };
                     wall_transform_relative.translation.x +=
@@ -218,8 +222,8 @@ pub fn update_ant_position_kinds(
                     ant_transform.translation.x += if is_left_side { 0.02 } else { -0.02 };
                 }
                 // Check the closest colliding wall
-                else if let Some((nav_node, wall_transform_global)) =
-                    find_closest_wall(ant_transform_global, colliding_entities, &nav_nodes, None)
+                else if let Some((nav_node_entity, nav_node, wall_transform_global)) =
+                    find_closest_wall(ant_transform_global, colliding_entities, &nav_nodes)
                 {
                     match nav_node {
                         NavNode::Background { .. } => unreachable!(),
@@ -233,11 +237,11 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
-                            ant.current_wall = *wall_transform_global;
+                            ant.current_wall = (nav_node_entity, *wall_transform_global);
                         }
                         // Otherwise update the transform of wall the ant is currently on
                         NavNode::VerticalEdge { .. } => {
-                            ant.current_wall = *wall_transform_global;
+                            ant.current_wall = (nav_node_entity, *wall_transform_global);
                         }
                     };
                 }
@@ -245,7 +249,7 @@ pub fn update_ant_position_kinds(
                 else if colliding_entities.is_empty() {
                     let new_wall_is_up_side = ant.direction.y < 0.;
                     let mut wall_transform_relative =
-                        ant.current_wall.reparented_to(ant_transform_global);
+                        ant.current_wall.1.reparented_to(ant_transform_global);
                     wall_transform_relative.translation.x +=
                         TILE_SIZE / 2. * if is_left_side { -1. } else { 1. };
                     wall_transform_relative.translation.y +=
@@ -261,6 +265,18 @@ pub fn update_ant_position_kinds(
                 }
             }
         }
+        // Update the current tile if in the background
+        if matches!(ant.position_kind, AntPositionKind::Background) {
+            let Some((background_entity, _)) =
+                nav_mesh_lut.get_tile_entity(ant_transform.translation.xy())
+            else {
+                continue;
+            };
+            let background_entity_transform = *nav_nodes
+                .get_component::<GlobalTransform>(background_entity)
+                .unwrap();
+            ant.current_wall = (background_entity, background_entity_transform);
+        }
     }
 }
 
@@ -273,26 +289,26 @@ pub fn update_ant_position(mut ants: Query<(&Ant, &mut Transform)>, time: Res<Ti
     for (ant, mut ant_transform) in ants.iter_mut() {
         match ant.position_kind {
             AntPositionKind::Background => {
-                let desired_direction = ant.direction.xy().normalize_or_zero() * ant.speed * dt;
-                ant_transform.translation.x += desired_direction.x;
-                ant_transform.translation.y += desired_direction.y;
+                let delta_xy = ant.direction.xy().normalize_or_zero() * ant.speed * dt;
+                ant_transform.translation.x += delta_xy.x;
+                ant_transform.translation.y += delta_xy.y;
             }
             AntPositionKind::VerticalWall { .. } => {
                 // Vertical speed is the ant's full speed, while speed in Z axis is a projection of the desired direction on YZ
-                let desired_direction_yz = ant.direction.yz().normalize_or_zero() * ant.speed * dt;
-                let desired_direction_y = ant.direction.y.signum();
-                ant_transform.translation.y += desired_direction_y;
-                ant_transform.translation.z += desired_direction_yz[1];
+                let delta_yz = ant.direction.yz().normalize_or_zero() * ant.speed * dt;
+                let delta_y = ant.direction.y.signum() * ant.speed * dt;
+                ant_transform.translation.y += delta_y;
+                ant_transform.translation.z += delta_yz[1];
                 if ant_transform.translation.z > WALL_Z_FACTOR * TILE_SIZE {
                     ant_transform.translation.z = WALL_Z_FACTOR * TILE_SIZE;
                 }
             }
             AntPositionKind::HorizontalWall { .. } => {
                 // Horizontal speed is the ant's full speed, while speed in Z axis is a projection of the desired direction on XZ
-                let desired_direction_xz = ant.direction.xz().normalize_or_zero() * ant.speed * dt;
-                let desired_direction_x = ant.direction.x.signum();
-                ant_transform.translation.x += desired_direction_x;
-                ant_transform.translation.z += desired_direction_xz[1];
+                let delta_y = ant.direction.xz().normalize_or_zero() * ant.speed * dt;
+                let delta_x = ant.direction.x.signum() * ant.speed * dt;
+                ant_transform.translation.x += delta_x;
+                ant_transform.translation.z += delta_y[1];
                 if ant_transform.translation.z > WALL_Z_FACTOR * TILE_SIZE {
                     ant_transform.translation.z = WALL_Z_FACTOR * TILE_SIZE;
                 }
@@ -304,24 +320,17 @@ pub fn update_ant_position(mut ants: Query<(&Ant, &mut Transform)>, time: Res<Ti
 fn find_closest_wall<'a>(
     ant_transform_global: &GlobalTransform,
     colliding_entities: &CollidingEntities,
-    nav_nodes: &'a Query<(&NavNode, &GlobalTransform)>,
-    filter: Option<fn(&NavNode) -> bool>,
-) -> Option<(&'a NavNode, &'a GlobalTransform)> {
+    nav_nodes: &'a Query<(Entity, &NavNode, &GlobalTransform)>,
+) -> Option<(Entity, &'a NavNode, &'a GlobalTransform)> {
     colliding_entities
         .iter()
         .filter_map(|entity| nav_nodes.get(entity).ok())
         .fold(
             None,
-            |closest_node: Option<(f32, &NavNode, &GlobalTransform)>,
-             (nav_node, wall_transform)| {
+            |closest_node: Option<(f32, Entity, &NavNode, &GlobalTransform)>,
+             (nav_node_entity, nav_node, wall_transform)| {
                 if matches!(nav_node, NavNode::Background { .. }) {
                     unreachable!();
-                }
-                // Skip nodes that the filter rejects
-                if let Some(filter) = filter {
-                    if !filter(nav_node) {
-                        return closest_node;
-                    }
                 }
                 let distance = ant_transform_global
                     .translation()
@@ -329,15 +338,17 @@ fn find_closest_wall<'a>(
                     .distance(wall_transform.translation().xy());
                 if let Some(closest_node) = closest_node {
                     if distance < closest_node.0 {
-                        return Some((distance, nav_node, wall_transform));
+                        return Some((distance, nav_node_entity, nav_node, wall_transform));
                     }
                 } else {
-                    return Some((distance, nav_node, wall_transform));
+                    return Some((distance, nav_node_entity, nav_node, wall_transform));
                 }
                 closest_node
             },
         )
-        .map(|(_, nav_node, wall_transform)| (nav_node, wall_transform))
+        .map(|(_, nav_node_entity, nav_node, wall_transform)| {
+            (nav_node_entity, nav_node, wall_transform)
+        })
 }
 
 fn place_ant_on_horizontal_wall(
@@ -386,7 +397,7 @@ pub fn debug_ants(ants: Query<(&Ant, &GlobalTransform)>, mut gizmos: Gizmos) {
         gizmos.circle_2d(pos.translation().xy(), 4., color);
         gizmos.line_2d(
             pos.translation().xy(),
-            ant.current_wall.translation().xy(),
+            ant.current_wall.1.translation().xy(),
             Color::WHITE,
         );
     }

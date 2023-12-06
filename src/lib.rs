@@ -17,6 +17,7 @@ impl Plugin for GamePlugin {
             .register_ldtk_int_cell::<TileEmptyUnderground>(2)
             .register_type::<components::nav_mesh::NavNode>()
             .insert_resource(AssetMetaCheck::Never)
+            .init_resource::<NavMeshLUT>()
             .add_plugins((
                 DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites? (TODO: test)
                 LdtkPlugin,

@@ -73,7 +73,8 @@ fn spawn_ants_on_navmesh(
         .unwrap();
 
     for _ in 0..10 {
-        let Some((_id, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng) else {
+        let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
+        else {
             return;
         };
 
@@ -88,6 +89,7 @@ fn spawn_ants_on_navmesh(
             &mut commands,
             direction,
             speed,
+            nav_node_entity,
             nav_node,
             nav_node_pos,
             entities_holder,

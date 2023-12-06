@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
-    COLLISION_GROUP_WALLS, WALL_Z_FACTOR, TILE_INT_EMPTY,
+    COLLISION_GROUP_WALLS, TILE_INT_EMPTY, TILE_SIZE, WALL_Z_FACTOR,
 };
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
@@ -107,10 +107,10 @@ pub fn spawn_nav_mesh(
         let grid_height = *grid_height;
         let half_tile_size = *tile_size as f32 / 2.;
 
-        let grid_is_empty = grid_int.iter().map(|i| *i == TILE_INT_EMPTY).collect_vec();
-        let grid_is_empty: &[bool] = grid_is_empty.as_ref();
+        let grid_is_empty_vec = grid_int.iter().map(|i| *i == TILE_INT_EMPTY).collect_vec();
+        let grid_is_empty: &[bool] = grid_is_empty_vec.as_ref();
 
-        let grid_entity = tile_storage
+        let grid_entity_vec = tile_storage
             .iter()
             .find(|(_, name)| name.as_str() == "Structure")
             .unwrap()
@@ -118,24 +118,17 @@ pub fn spawn_nav_mesh(
             .iter()
             .map(|entity| entity.unwrap())
             .collect_vec();
-        let grid_entity = grid_entity
+        let grid_entity_vec = grid_entity_vec
             .chunks(grid_width as usize)
             .rev()
             .flatten()
             .copied()
             .collect_vec();
-        let grid_entity: &[Entity] = grid_entity.as_ref();
+        let grid_entity: &[Entity] = grid_entity_vec.as_ref();
 
         let grid_iter = (0..grid_entity.len()).map(|i| Index2d::new(i, grid_width, grid_height));
 
         // Spawn an entity for every edge
-        #[derive(Debug, Clone, Copy, Default)]
-        struct TileEdges {
-            up: Option<Entity>,
-            left: Option<Entity>,
-            down: Option<Entity>,
-            right: Option<Entity>,
-        }
         let grid_edges = grid_iter
             .clone()
             .map(|tile| {
@@ -157,7 +150,6 @@ pub fn spawn_nav_mesh(
                             id
                         })
                 };
-                // dbg!(&tile);
                 TileEdges {
                     up: spawn_edge(tile.up()),
                     left: spawn_edge(tile.left()),
@@ -429,6 +421,63 @@ pub fn spawn_nav_mesh(
                     right,
                 });
         }
+        // Save the look-up tables
+        commands.insert_resource(NavMeshLUT {
+            grid_entity: grid_entity_vec,
+            grid_edges,
+            grid_is_empty: grid_is_empty_vec,
+            grid_width: grid_width as usize,
+            grid_height: grid_height as usize,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub struct TileEdges {
+    pub up: Option<Entity>,
+    pub left: Option<Entity>,
+    pub down: Option<Entity>,
+    pub right: Option<Entity>,
+}
+
+// FIXME: this works for 1 level only
+#[derive(Debug, Default, Resource)]
+pub struct NavMeshLUT {
+    /// Entities of the tiles
+    grid_entity: Vec<Entity>,
+    /// Entities of the edges of each tile
+    grid_edges: Vec<TileEdges>,
+    /// Identifies empty tiles
+    grid_is_empty: Vec<bool>,
+    /// Number of tiles in X
+    grid_width: usize,
+    /// Number of tiles in Y
+    grid_height: usize,
+}
+
+impl NavMeshLUT {
+    pub fn get_tile_entity(&self, mut pos: Vec2) -> Option<(Entity, usize)> {
+        if pos.x < 0.
+            || pos.y < 0.
+            || pos.x > self.grid_width as f32 * TILE_SIZE
+            || pos.y > self.grid_height as f32 * TILE_SIZE
+        {
+            warn!("Trying to find a tile outside the map");
+            return None;
+        }
+        pos.y = self.grid_height as f32 * TILE_SIZE - pos.y;
+        let grid_pos_x = (pos.x / TILE_SIZE) as usize;
+        let grid_pos_y = (pos.y / TILE_SIZE) as usize;
+        let index = grid_pos_x + grid_pos_y * self.grid_width;
+        if !self.grid_is_empty[index] {
+            warn!("Trying to find a non-empty tile");
+            return None;
+        }
+        Some((self.grid_entity[index], index))
+    }
+
+    pub fn get_tile_edges(&self, tile_index: usize) -> TileEdges {
+        self.grid_edges[tile_index]
     }
 }
 
