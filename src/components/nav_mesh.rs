@@ -1,10 +1,13 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 use bevy_ecs_tilemap::tiles::TileStorage;
-use bevy_rapier2d::geometry::{Collider, CollisionGroups, Group};
+use bevy_rapier2d::geometry::{Collider, CollisionGroups};
 use itertools::Itertools;
 
-use super::entities::COLLISION_GROUP_WALLS;
+use crate::{
+    COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
+    COLLISION_GROUP_WALLS, WALL_Z_FACTOR,
+};
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
 #[reflect(Component)]
@@ -65,8 +68,8 @@ impl NavNode {
 #[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq)]
 pub enum EdgeNeighborKind {
     Straight,
-    Concave,
-    Convex,
+    Inward,
+    Outward,
 }
 
 const EMPTY: i32 = 2; //FIXME
@@ -166,7 +169,10 @@ pub fn spawn_nav_mesh(
             .collect::<Vec<TileEdges>>();
 
         // Make a Node for each tile and edge, linking them to their neighbors' entities
-        let wall_collision_group = CollisionGroups::new(COLLISION_GROUP_WALLS, Group::all());
+        let wall_collision_group = CollisionGroups::new(
+            COLLISION_GROUP_WALLS,
+            COLLISION_GROUP_PLAYER | COLLISION_GROUP_PLAYER_SENSOR | COLLISION_GROUP_ANTS,
+        );
         for tile in grid_iter {
             // Non empty tiles have no edges
             if !grid_is_empty[tile.i()] {
@@ -179,12 +185,12 @@ pub fn spawn_nav_mesh(
                 .unwrap_or_else(|| grid_entity[tile.up().unwrap().i()]);
             if let Some(up_edge) = tile_edges.up {
                 let (right_kind, right) = if let Some(edge_right) = tile_edges.right {
-                    (EdgeNeighborKind::Concave, edge_right)
+                    (EdgeNeighborKind::Inward, edge_right)
                 } else {
                     let right = tile.right().unwrap();
                     if exists_and_is_empty(right.up(), grid_entity, grid_is_empty).is_some() {
                         (
-                            EdgeNeighborKind::Convex,
+                            EdgeNeighborKind::Outward,
                             grid_edges[right.up().unwrap().i()].left.unwrap(),
                         )
                     } else {
@@ -195,12 +201,12 @@ pub fn spawn_nav_mesh(
                     }
                 };
                 let (left_kind, left) = if let Some(edge_left) = tile_edges.left {
-                    (EdgeNeighborKind::Concave, edge_left)
+                    (EdgeNeighborKind::Inward, edge_left)
                 } else {
                     let left = tile.left().unwrap();
                     if exists_and_is_empty(left.up(), grid_entity, grid_is_empty).is_some() {
                         (
-                            EdgeNeighborKind::Convex,
+                            EdgeNeighborKind::Outward,
                             grid_edges[left.up().unwrap().i()].right.unwrap(),
                         )
                     } else {
@@ -218,7 +224,11 @@ pub fn spawn_nav_mesh(
                         back,
                         is_up_side: true,
                     },
-                    TransformBundle::from_transform(Transform::from_xyz(0., half_tile_size, 0.)),
+                    TransformBundle::from_transform(Transform::from_xyz(
+                        0.,
+                        half_tile_size,
+                        half_tile_size * WALL_Z_FACTOR,
+                    )),
                     Collider::polyline(
                         vec![
                             Vec2::new(-half_tile_size, 0.),
@@ -235,12 +245,12 @@ pub fn spawn_nav_mesh(
                 .unwrap_or_else(|| grid_entity[tile.down().unwrap().i()]);
             if let Some(down_edge) = tile_edges.down {
                 let (right_kind, right) = if let Some(edge_right) = tile_edges.right {
-                    (EdgeNeighborKind::Concave, edge_right)
+                    (EdgeNeighborKind::Inward, edge_right)
                 } else {
                     let right = tile.right().unwrap();
                     if exists_and_is_empty(right.down(), grid_entity, grid_is_empty).is_some() {
                         (
-                            EdgeNeighborKind::Convex,
+                            EdgeNeighborKind::Outward,
                             grid_edges[right.down().unwrap().i()].left.unwrap(),
                         )
                     } else {
@@ -251,12 +261,12 @@ pub fn spawn_nav_mesh(
                     }
                 };
                 let (left_kind, left) = if let Some(edge_left) = tile_edges.left {
-                    (EdgeNeighborKind::Concave, edge_left)
+                    (EdgeNeighborKind::Inward, edge_left)
                 } else {
                     let left = tile.left().unwrap();
                     if exists_and_is_empty(left.down(), grid_entity, grid_is_empty).is_some() {
                         (
-                            EdgeNeighborKind::Convex,
+                            EdgeNeighborKind::Outward,
                             grid_edges[left.down().unwrap().i()].right.unwrap(),
                         )
                     } else {
@@ -276,7 +286,11 @@ pub fn spawn_nav_mesh(
                         back,
                         is_up_side: false,
                     },
-                    TransformBundle::from_transform(Transform::from_xyz(0., -half_tile_size, 0.)),
+                    TransformBundle::from_transform(Transform::from_xyz(
+                        0.,
+                        -half_tile_size,
+                        half_tile_size * WALL_Z_FACTOR,
+                    )),
                     Collider::polyline(
                         vec![
                             Vec2::new(-half_tile_size, 0.),
@@ -293,12 +307,12 @@ pub fn spawn_nav_mesh(
                 .unwrap_or_else(|| grid_entity[tile.left().unwrap().i()]);
             if let Some(left_edge) = tile_edges.left {
                 let (down_kind, down) = if let Some(edge_down) = tile_edges.down {
-                    (EdgeNeighborKind::Concave, edge_down)
+                    (EdgeNeighborKind::Inward, edge_down)
                 } else {
                     let down = tile.down().unwrap();
                     if exists_and_is_empty(down.left(), grid_entity, grid_is_empty).is_some() {
                         (
-                            EdgeNeighborKind::Convex,
+                            EdgeNeighborKind::Outward,
                             grid_edges[down.left().unwrap().i()].up.unwrap(),
                         )
                     } else {
@@ -309,12 +323,12 @@ pub fn spawn_nav_mesh(
                     }
                 };
                 let (up_kind, up) = if let Some(edge_up) = tile_edges.up {
-                    (EdgeNeighborKind::Concave, edge_up)
+                    (EdgeNeighborKind::Inward, edge_up)
                 } else {
                     let up = tile.up().unwrap();
                     if exists_and_is_empty(up.left(), grid_entity, grid_is_empty).is_some() {
                         (
-                            EdgeNeighborKind::Convex,
+                            EdgeNeighborKind::Outward,
                             grid_edges[up.left().unwrap().i()].down.unwrap(),
                         )
                     } else {
@@ -331,7 +345,11 @@ pub fn spawn_nav_mesh(
                         back,
                         is_left_side: true,
                     },
-                    TransformBundle::from_transform(Transform::from_xyz(-half_tile_size, 0., 0.)),
+                    TransformBundle::from_transform(Transform::from_xyz(
+                        -half_tile_size,
+                        0.,
+                        half_tile_size * WALL_Z_FACTOR,
+                    )),
                     Collider::polyline(
                         vec![
                             Vec2::new(0., half_tile_size),
@@ -348,12 +366,12 @@ pub fn spawn_nav_mesh(
                 .unwrap_or_else(|| grid_entity[tile.right().unwrap().i()]);
             if let Some(right_edge) = tile_edges.right {
                 let (down_kind, down) = if let Some(edge_down) = tile_edges.down {
-                    (EdgeNeighborKind::Concave, edge_down)
+                    (EdgeNeighborKind::Inward, edge_down)
                 } else {
                     let down = tile.down().unwrap();
                     if exists_and_is_empty(down.right(), grid_entity, grid_is_empty).is_some() {
                         (
-                            EdgeNeighborKind::Convex,
+                            EdgeNeighborKind::Outward,
                             grid_edges[down.right().unwrap().i()].up.unwrap(),
                         )
                     } else {
@@ -364,12 +382,12 @@ pub fn spawn_nav_mesh(
                     }
                 };
                 let (up_kind, up) = if let Some(edge_up) = tile_edges.up {
-                    (EdgeNeighborKind::Concave, edge_up)
+                    (EdgeNeighborKind::Inward, edge_up)
                 } else {
                     let up = tile.up().unwrap();
                     if exists_and_is_empty(up.right(), grid_entity, grid_is_empty).is_some() {
                         (
-                            EdgeNeighborKind::Convex,
+                            EdgeNeighborKind::Outward,
                             grid_edges[up.right().unwrap().i()].down.unwrap(),
                         )
                     } else {
@@ -389,7 +407,11 @@ pub fn spawn_nav_mesh(
                         back,
                         is_left_side: false,
                     },
-                    TransformBundle::from_transform(Transform::from_xyz(half_tile_size, 0., 0.)),
+                    TransformBundle::from_transform(Transform::from_xyz(
+                        half_tile_size,
+                        0.,
+                        half_tile_size * WALL_Z_FACTOR,
+                    )),
                     Collider::polyline(
                         vec![
                             Vec2::new(0., half_tile_size),

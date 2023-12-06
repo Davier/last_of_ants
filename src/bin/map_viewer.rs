@@ -5,14 +5,14 @@ use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use itertools::Itertools;
 use last_of_ants::{
     components::{
-        entities::AntBundle,
-        nav_mesh::{debug_nav_mesh, spawn_nav_mesh, NavNode},
+        ants::{debug_ants, AntBundle},
+        nav_mesh::{debug_nav_mesh, NavNode},
         pheromon::{Gradient, Pheromon},
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     GamePlugin,
 };
-use rand::seq::IteratorRandom;
+use rand::{seq::IteratorRandom, Rng};
 
 fn main() {
     App::new()
@@ -27,10 +27,11 @@ fn main() {
             (
                 init_pheromons,
                 spawn_ants_on_navmesh.run_if(on_key_just_pressed(KeyCode::Space)),
-                move_ants_on_mesh,
+                // move_ants_on_mesh,
                 debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
                 debug_nav_mesh.run_if(toggle_on_key(KeyCode::N)),
-                toggle_physics_debug,
+                debug_ants.run_if(toggle_on_key(KeyCode::O)),
+                toggle_physics_debug.run_if(on_key_just_pressed(KeyCode::P)),
                 camera_movement,
                 update_gradient,
             ),
@@ -57,7 +58,8 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Press N to show the navigation mesh\n\
         Press I to show the world inspector\n\
         Press P to show the physics debug view\n\
-        Press H to show the pheromons then click left/right to add/sub",
+        Press H to show the pheromons then click left/right to add/sub\n\
+        Press O to show the ants debug view",
         default(),
     ));
 }
@@ -73,7 +75,7 @@ fn init_pheromons(mut commands: Commands, nodes: Query<(Entity, &NavNode), Added
 
 fn spawn_ants_on_navmesh(
     mut commands: Commands,
-    nav_nodes: Query<(Entity, &GlobalTransform), With<NavNode>>,
+    nav_nodes: Query<(Entity, &GlobalTransform, &NavNode)>,
     level: Query<&Children, With<LevelIid>>,
     named_transform: Query<(Entity, &Name, &GlobalTransform)>,
 ) {
@@ -85,18 +87,28 @@ fn spawn_ants_on_navmesh(
         .find(|(_, name, _)| name.as_str() == "Entities")
         .unwrap();
 
-    for _ in 0..5 {
-        let Some((id, node_pos)) = nav_nodes.iter().choose(&mut rng) else {
+    for _ in 0..10 {
+        let Some((_id, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng) else {
             return;
         };
 
-        let mut transform = node_pos.reparented_to(entities_holder_pos);
-        transform.translation.z += 10.;
-        let mut bundle = AntBundle::default();
-        bundle.sprite.transform = transform;
-        commands
-            .spawn((bundle, MovementGoal(id)))
-            .set_parent(entities_holder);
+        let direction = Vec3::new(
+            rng.gen::<f32>() - 0.5,
+            rng.gen::<f32>() - 0.5,
+            rng.gen::<f32>() - 0.5,
+        )
+        .normalize();
+        let speed = 40.;
+        AntBundle::spawn_on_nav_node(
+            &mut commands,
+            direction,
+            speed,
+            nav_node,
+            nav_node_pos,
+            entities_holder,
+            entities_holder_pos,
+        );
+        // .insert(MovementGoal(_id));
     }
 }
 

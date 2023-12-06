@@ -1,5 +1,7 @@
 //! A shader and a material that uses it.
 
+use std::f32::consts::PI;
+
 use bevy::{
     prelude::*,
     reflect::TypePath,
@@ -14,6 +16,7 @@ fn main() {
             Material2dPlugin::<CustomMaterial>::default(),
         ))
         .add_systems(Startup, setup)
+        .add_systems(Update, move_forward)
         .run();
 }
 
@@ -50,4 +53,26 @@ impl Material2d for CustomMaterial {
     }
     // TODO: specialize on top/side view
     // TODO: add instance buffer for customization: orientation
+}
+
+fn move_forward(
+    mut ants: Query<&mut Transform, With<Handle<CustomMaterial>>>,
+    time: Res<Time>,
+    inputs: Res<Input<KeyCode>>,
+) {
+    for mut transform in ants.iter_mut() {
+        let forward = dbg!(transform.local_x());
+        if inputs.pressed(KeyCode::W) {
+            transform.translation += forward * 50.0 * time.delta_seconds();
+        }
+        let angle = if inputs.pressed(KeyCode::A) {
+            1.
+        } else if inputs.pressed(KeyCode::D) {
+            -1.
+        } else {
+            0.
+        };
+        transform.rotate_local_z(angle * PI / 8. * time.delta_seconds());
+        dbg!(transform.translation);
+    }
 }

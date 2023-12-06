@@ -14,9 +14,7 @@ pub fn toggle_on_key(key: KeyCode) -> impl FnMut(Res<Input<KeyCode>>, Local<bool
     }
 }
 
-pub fn toggle_physics_debug(mut config: ResMut<DebugRenderContext>, inputs: Res<Input<KeyCode>>) {
-    if inputs.just_pressed(KeyCode::P) {
-        config.enabled = !config.enabled;
-    }
+pub fn toggle_physics_debug(mut config: ResMut<DebugRenderContext>) {
+    config.enabled = !config.enabled;
 }
 

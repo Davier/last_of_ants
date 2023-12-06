@@ -4,7 +4,10 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-use crate::{PLAYER_SIZE, ANT_SIZE};
+use crate::{
+    COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
+    COLLISION_GROUP_WALLS, PLAYER_SIZE,
+};
 
 use super::nav_mesh::NavNode;
 
@@ -35,7 +38,7 @@ impl Default for PlayerBundle {
                 min_slope_slide_angle: PI / 5.,
                 filter_groups: Some(CollisionGroups::new(
                     COLLISION_GROUP_PLAYER,
-                    COLLISION_GROUP_WALLS,
+                    COLLISION_GROUP_WALLS | COLLISION_GROUP_ANTS,
                 )),
                 ..Default::default()
             },
@@ -128,40 +131,3 @@ pub fn spawn_player_sensor(
             .set_parent(entity);
     }
 }
-
-#[derive(Bundle, Clone, LdtkEntity)]
-pub struct AntBundle {
-    pub ant: Ant,
-    pub sprite: SpriteBundle,
-    pub collider: Collider,
-    pub collision_groups: CollisionGroups,
-}
-
-impl Default for AntBundle {
-    fn default() -> Self {
-        Self {
-            ant: Default::default(),
-            sprite: SpriteBundle {
-                sprite: Sprite {
-                    color: Color::BLACK,
-                    custom_size: Some(ANT_SIZE),
-                    ..default()
-                },
-                ..default()
-            },
-            collider: Collider::cuboid(ANT_SIZE.x / 2., ANT_SIZE.y / 2.),
-            collision_groups: CollisionGroups::new(
-                COLLISION_GROUP_ANTS,
-                COLLISION_GROUP_PLAYER | COLLISION_GROUP_WALLS,
-            ),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Default, Component, Reflect)]
-pub struct Ant;
-
-pub const COLLISION_GROUP_WALLS: Group = Group::GROUP_1;
-pub const COLLISION_GROUP_PLAYER: Group = Group::GROUP_2;
-pub const COLLISION_GROUP_PLAYER_SENSOR: Group = Group::GROUP_3;
-pub const COLLISION_GROUP_ANTS: Group = Group::GROUP_4;

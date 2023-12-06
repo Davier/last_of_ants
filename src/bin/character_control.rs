@@ -5,10 +5,11 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        entities::{update_player_sensor, Player},
+        ants::debug_ants,
         nav_mesh::debug_nav_mesh,
+        player::{update_player_sensor, Player},
     },
-    helpers::{toggle_on_key, toggle_physics_debug},
+    helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     GamePlugin,
 };
 
@@ -25,7 +26,8 @@ fn main() {
             Update,
             (
                 debug_nav_mesh.run_if(toggle_on_key(KeyCode::N)),
-                toggle_physics_debug,
+                debug_ants.run_if(toggle_on_key(KeyCode::O)),
+                toggle_physics_debug.run_if(on_key_just_pressed(KeyCode::P)),
                 attach_camera_to_player,
                 player_movement.after(update_player_sensor),
             ),
