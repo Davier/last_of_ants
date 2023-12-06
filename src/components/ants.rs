@@ -2,7 +2,8 @@ use bevy::{ecs::system::EntityCommands, prelude::*};
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    ANT_SIZE, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_WALLS, WALL_Z_FACTOR,
+    ANT_SIZE, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_WALLS, TILE_SIZE,
+    WALL_Z_FACTOR,
 };
 
 use super::nav_mesh::NavNode;
@@ -35,16 +36,29 @@ impl AntBundle {
         nav_node_pos: &GlobalTransform,
         entities_holder_pos: &GlobalTransform,
     ) -> Self {
+        // FIXME: use common fn to place on walls?
         let mut transform = nav_node_pos.reparented_to(entities_holder_pos);
-        transform.translation.z = 0.01; // FIXME
         let position_kind = match nav_node {
-            NavNode::Background { .. } => AntPositionKind::Background,
-            NavNode::VerticalEdge { is_left_side, .. } => AntPositionKind::VerticalWall {
-                is_left_side: *is_left_side,
-            },
-            NavNode::HorizontalEdge { is_up_side, .. } => AntPositionKind::HorizontalWall {
-                is_up_side: *is_up_side,
-            },
+            NavNode::Background { .. } => {
+                transform.translation.z = 0.;
+                AntPositionKind::Background
+            }
+            NavNode::VerticalEdge { is_left_side, .. } => {
+                transform.translation.z = TILE_SIZE * WALL_Z_FACTOR;
+                transform.translation.x +=
+                    (ANT_SIZE.x / 2. - 0.01) * if *is_left_side { 1. } else { -1. };
+                AntPositionKind::VerticalWall {
+                    is_left_side: *is_left_side,
+                }
+            }
+            NavNode::HorizontalEdge { is_up_side, .. } => {
+                transform.translation.z = TILE_SIZE * WALL_Z_FACTOR;
+                transform.translation.y +=
+                    (ANT_SIZE.y / 2. - 0.01) * if *is_up_side { -1. } else { 1. };
+                AntPositionKind::HorizontalWall {
+                    is_up_side: *is_up_side,
+                }
+            }
         };
         let current_wall = *nav_node_pos;
         Self {
@@ -151,7 +165,7 @@ pub fn update_ant_position_kinds(
                 if ant_transform.translation.z <= 0.01 {
                     ant.position_kind = AntPositionKind::Background;
                     ant_transform.translation.z = 0.;
-                    ant_transform.translation.y += if is_up_side { -0.01 } else { 0.01 };
+                    ant_transform.translation.y += if is_up_side { -0.02 } else { 0.02 };
                 }
                 // Check the closest colliding wall
                 else if let Some((nav_node, wall_transform_global)) =
@@ -182,11 +196,10 @@ pub fn update_ant_position_kinds(
                     let new_wall_is_left_side = ant.direction.x > 0.;
                     let mut wall_transform_relative =
                         ant.current_wall.reparented_to(ant_transform_global);
-                    // FIXME: hardcoded tile sizes
                     wall_transform_relative.translation.y +=
-                        16. / 2. * if is_up_side { 1. } else { -1. };
+                        TILE_SIZE / 2. * if is_up_side { 1. } else { -1. };
                     wall_transform_relative.translation.x +=
-                        16. / 2. * if new_wall_is_left_side { 1. } else { -1. };
+                        TILE_SIZE / 2. * if new_wall_is_left_side { 1. } else { -1. };
 
                     place_ant_on_vertical_wall(
                         new_wall_is_left_side,
@@ -202,7 +215,7 @@ pub fn update_ant_position_kinds(
                 if ant_transform.translation.z <= 0.01 {
                     ant.position_kind = AntPositionKind::Background;
                     ant_transform.translation.z = 0.;
-                    ant_transform.translation.x += if is_left_side { 0.01 } else { -0.01 };
+                    ant_transform.translation.x += if is_left_side { 0.02 } else { -0.02 };
                 }
                 // Check the closest colliding wall
                 else if let Some((nav_node, wall_transform_global)) =
@@ -233,11 +246,10 @@ pub fn update_ant_position_kinds(
                     let new_wall_is_up_side = ant.direction.y < 0.;
                     let mut wall_transform_relative =
                         ant.current_wall.reparented_to(ant_transform_global);
-                    // FIXME: hardcoded tile sizes
                     wall_transform_relative.translation.x +=
-                        16. / 2. * if is_left_side { -1. } else { 1. };
+                        TILE_SIZE / 2. * if is_left_side { -1. } else { 1. };
                     wall_transform_relative.translation.y +=
-                        16. / 2. * if new_wall_is_up_side { -1. } else { 1. };
+                        TILE_SIZE / 2. * if new_wall_is_up_side { -1. } else { 1. };
 
                     place_ant_on_horizontal_wall(
                         new_wall_is_up_side,
@@ -271,9 +283,8 @@ pub fn update_ant_position(mut ants: Query<(&Ant, &mut Transform)>, time: Res<Ti
                 let desired_direction_y = ant.direction.y.signum();
                 ant_transform.translation.y += desired_direction_y;
                 ant_transform.translation.z += desired_direction_yz[1];
-                // FIXME tile size
-                if ant_transform.translation.z > WALL_Z_FACTOR * 16. {
-                    ant_transform.translation.z = WALL_Z_FACTOR * 16.;
+                if ant_transform.translation.z > WALL_Z_FACTOR * TILE_SIZE {
+                    ant_transform.translation.z = WALL_Z_FACTOR * TILE_SIZE;
                 }
             }
             AntPositionKind::HorizontalWall { .. } => {
@@ -282,9 +293,8 @@ pub fn update_ant_position(mut ants: Query<(&Ant, &mut Transform)>, time: Res<Ti
                 let desired_direction_x = ant.direction.x.signum();
                 ant_transform.translation.x += desired_direction_x;
                 ant_transform.translation.z += desired_direction_xz[1];
-                // FIXME tile size
-                if ant_transform.translation.z > WALL_Z_FACTOR * 16. {
-                    ant_transform.translation.z = WALL_Z_FACTOR * 16.;
+                if ant_transform.translation.z > WALL_Z_FACTOR * TILE_SIZE {
+                    ant_transform.translation.z = WALL_Z_FACTOR * TILE_SIZE;
                 }
             }
         }
@@ -339,10 +349,10 @@ fn place_ant_on_horizontal_wall(
     // Change position kind
     ant.position_kind = AntPositionKind::HorizontalWall { is_up_side };
     // Re-place ant on the wall
-    let offset = (ANT_SIZE.y / 2. - 0.1) * if is_up_side { -1. } else { 1. };
+    let offset = (ANT_SIZE.y / 2. - 0.01) * if is_up_side { -1. } else { 1. };
     ant_transform.translation.y += wall_transform_relative.translation.y + offset;
     if ant_transform.translation.z < 0.01 {
-        ant_transform.translation.z = 0.1; // FIXME
+        ant_transform.translation.z = 0.01;
     }
 }
 
@@ -355,10 +365,10 @@ fn place_ant_on_vertical_wall(
     // Change position kind
     ant.position_kind = AntPositionKind::VerticalWall { is_left_side };
     // Re-place ant on the wall
-    let offset = (ANT_SIZE.y / 2. - 0.1) * if is_left_side { 1. } else { -1. };
+    let offset = (ANT_SIZE.x / 2. - 0.01) * if is_left_side { 1. } else { -1. };
     ant_transform.translation.x += wall_transform_relative.translation.x + offset;
     if ant_transform.translation.z < 0.01 {
-        ant_transform.translation.z = 0.1; // FIXME
+        ant_transform.translation.z = 0.01;
     }
 }
 

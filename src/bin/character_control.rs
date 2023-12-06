@@ -10,7 +10,7 @@ use last_of_ants::{
         player::{update_player_sensor, Player},
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
-    GamePlugin,
+    GamePlugin, TILE_SIZE,
 };
 
 fn main() {
@@ -70,11 +70,11 @@ fn player_movement(
         return;
     };
 
-    let mut walk_speed = 160.;
-    let gravity = -9.81 * 10.0 * 16.; // FIXME: scale
+    let mut walk_speed = 10.0 * TILE_SIZE;
+    let gravity = -9.81 * 10.0 * TILE_SIZE;
     let dt = time.delta_seconds();
-    let jump_impulse = 8. / dt;
-    let max_sliding_velocity = 50.;
+    let jump_impulse = 0.5 * TILE_SIZE / dt;
+    let max_sliding_velocity = 4. * TILE_SIZE;
     let jump_tolerance = 0.1; // [s]
 
     let is_on_ground = !player.on_ground.is_empty();

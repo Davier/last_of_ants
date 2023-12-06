@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
-    COLLISION_GROUP_WALLS, WALL_Z_FACTOR,
+    COLLISION_GROUP_WALLS, WALL_Z_FACTOR, TILE_INT_EMPTY,
 };
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
@@ -72,7 +72,6 @@ pub enum EdgeNeighborKind {
     Outward,
 }
 
-const EMPTY: i32 = 2; //FIXME
 pub fn spawn_nav_mesh(
     mut commands: Commands,
     mut level_events: EventReader<LevelEvent>,
@@ -108,7 +107,7 @@ pub fn spawn_nav_mesh(
         let grid_height = *grid_height;
         let half_tile_size = *tile_size as f32 / 2.;
 
-        let grid_is_empty = grid_int.iter().map(|i| *i == EMPTY).collect_vec();
+        let grid_is_empty = grid_int.iter().map(|i| *i == TILE_INT_EMPTY).collect_vec();
         let grid_is_empty: &[bool] = grid_is_empty.as_ref();
 
         let grid_entity = tile_storage
