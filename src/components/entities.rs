@@ -4,6 +4,8 @@ use bevy::{prelude::*, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
 
+use crate::{PLAYER_SIZE, ANT_SIZE};
+
 use super::nav_mesh::NavNode;
 
 #[derive(Bundle, LdtkEntity)]
@@ -22,18 +24,18 @@ impl Default for PlayerBundle {
             sprite: SpriteBundle {
                 sprite: Sprite {
                     color: Color::GREEN,
-                    custom_size: Some(Vec2::new(8., 16.)),
+                    custom_size: Some(PLAYER_SIZE),
                     ..default()
                 },
                 ..default()
             },
-            collider: Collider::cuboid(4., 8.),
+            collider: Collider::cuboid(PLAYER_SIZE.x / 2., PLAYER_SIZE.y / 2.),
             player: Default::default(),
             controller: KinematicCharacterController {
                 min_slope_slide_angle: PI / 5.,
                 filter_groups: Some(CollisionGroups::new(
                     COLLISION_GROUP_PLAYER,
-                    COLLISION_GROUP_WALLS | COLLISION_GROUP_ANTS,
+                    COLLISION_GROUP_WALLS,
                 )),
                 ..Default::default()
             },
@@ -54,6 +56,7 @@ pub fn update_player_sensor(
         };
         player.is_on_left_wall = false;
         player.is_on_right_wall = false;
+        // player.is_on_ceiling = false;
         player.on_ground.clear();
         player.on_wall.clear();
         for colliding_entity in colliding_entities.iter() {
@@ -69,8 +72,17 @@ pub fn update_player_sensor(
                         player.is_on_right_wall = true;
                     }
                 }
-                NavNode::HorizontalEdge { .. } => {
+                NavNode::HorizontalEdge {
+                    is_up_side: false, ..
+                } => {
                     player.on_ground.insert(colliding_entity);
+                }
+                NavNode::HorizontalEdge {
+                    is_up_side: true, ..
+                } => {
+                    // The sensor is now only at the player's feets, collisions
+                    // with the ceiling are detected with the character controller
+                    // player.is_on_ceiling = true;
                 }
                 _ => (),
             }
@@ -85,6 +97,7 @@ pub struct Player {
     // pub is_grounded: bool,
     pub is_on_left_wall: bool,
     pub is_on_right_wall: bool,
+    // pub is_on_ceiling: bool,
 }
 
 #[derive(Debug, Copy, Clone, Reflect, Component)]
@@ -98,13 +111,15 @@ pub fn spawn_player_sensor(
 ) {
     for (entity, collider) in added_players.iter() {
         let size = collider.as_cuboid().unwrap().raw.half_extents;
-        let offset = 2.;
+        let offset = 0.5;
         commands
             .spawn((
                 PlayerWallSensor { player: entity },
-                Collider::cuboid(size[0] + offset, size[1] + offset),
+                // The sensor is smaller and at the feets of the player, otherwise it detects
+                // vertical walls that are only on top of the player
+                Collider::cuboid(size[0] + offset, size[1] / 2. + offset),
                 Sensor,
-                TransformBundle::default(),
+                TransformBundle::from_transform(Transform::from_xyz(0., -size[1] / 2., 0.)),
                 ActiveEvents::COLLISION_EVENTS,
                 ActiveCollisionTypes::STATIC_STATIC,
                 CollidingEntities::default(),
@@ -129,12 +144,12 @@ impl Default for AntBundle {
             sprite: SpriteBundle {
                 sprite: Sprite {
                     color: Color::BLACK,
-                    custom_size: Some(Vec2::new(8., 8.)),
+                    custom_size: Some(ANT_SIZE),
                     ..default()
                 },
                 ..default()
             },
-            collider: Collider::cuboid(4., 4.),
+            collider: Collider::cuboid(ANT_SIZE.x / 2., ANT_SIZE.y / 2.),
             collision_groups: CollisionGroups::new(
                 COLLISION_GROUP_ANTS,
                 COLLISION_GROUP_PLAYER | COLLISION_GROUP_WALLS,
