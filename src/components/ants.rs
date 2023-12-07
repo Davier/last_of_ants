@@ -1,9 +1,9 @@
-use bevy::{ecs::system::EntityCommands, prelude::*};
+use bevy::{ecs::system::EntityCommands, prelude::*, render::view::{RenderLayers, NoFrustumCulling}};
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    ANT_SIZE, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_WALLS, TILE_SIZE,
-    WALL_Z_FACTOR,
+    ANT_SIZE, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
+    COLLISION_GROUP_WALLS, TILE_SIZE, WALL_Z_FACTOR, RENDERLAYER_ANTS,
 };
 
 use super::nav_mesh::{NavMeshLUT, NavNode};
@@ -18,6 +18,7 @@ pub struct AntBundle {
     pub active_collisions: ActiveCollisionTypes,
     pub colliding_entities: CollidingEntities,
     pub collision_groups: CollisionGroups,
+    pub render_layers: RenderLayers,
 }
 
 #[derive(Clone, Copy, Component, Reflect)]
@@ -85,8 +86,9 @@ impl AntBundle {
             colliding_entities: Default::default(),
             collision_groups: CollisionGroups::new(
                 COLLISION_GROUP_ANTS,
-                COLLISION_GROUP_PLAYER | COLLISION_GROUP_WALLS,
+                COLLISION_GROUP_PLAYER_SENSOR | COLLISION_GROUP_WALLS,
             ),
+            render_layers: RENDERLAYER_ANTS,
         }
     }
     pub fn spawn_on_nav_node<'c, 'w, 's>(
@@ -258,7 +260,7 @@ pub fn update_ant_position_kinds(
                     let (wall_entity, _wall_node, wall_transform_global) = {
                         let NavNode::VerticalEdge { up, down, .. } = current_wall.1 else {
                             dbg!(current_wall);
-                            panic!();
+                            panic!(); // FIXME: triggers if spawning ants too early?
                         };
                         let neighbor = if new_wall_is_up_side { down } else { up };
                         nav_nodes.get(*neighbor).unwrap()

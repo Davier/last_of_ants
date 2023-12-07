@@ -1,7 +1,7 @@
 pub mod components;
 pub mod helpers;
 
-use bevy::{asset::AssetMetaCheck, prelude::*};
+use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers};
 use bevy_ecs_ldtk::{prelude::*, systems::process_ldtk_levels};
 use bevy_rapier2d::prelude::*;
 
@@ -13,8 +13,8 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.register_ldtk_entity::<PlayerBundle>("Player")
             // .register_ldtk_entity::<AntBundle>("Ant")
-            .register_ldtk_int_cell::<TileGround>(1)
-            .register_ldtk_int_cell::<TileEmptyUnderground>(2)
+            .register_ldtk_int_cell::<TileGroundBundle>(TILE_INT_GROUND)
+            .register_ldtk_int_cell::<TileEmptyUndergroundBundle>(TILE_INT_EMPTY)
             .register_type::<components::nav_mesh::NavNode>()
             .insert_resource(AssetMetaCheck::Never)
             .init_resource::<NavMeshLUT>()
@@ -46,6 +46,7 @@ pub const ANT_SIZE: Vec2 = Vec2::new(8., 8.);
 /// Vertical and horizontal edges will have their [NavNode] placed at `tile_size * WALL_Z_FACTOR / 2.` in Z
 pub const WALL_Z_FACTOR: f32 = 1.;
 
+pub const TILE_INT_GROUND: i32 = 1;
 pub const TILE_INT_EMPTY: i32 = 2;
 pub const TILE_SIZE: f32 = 16.;
 
@@ -53,3 +54,7 @@ pub const COLLISION_GROUP_WALLS: Group = Group::GROUP_1;
 pub const COLLISION_GROUP_PLAYER: Group = Group::GROUP_2;
 pub const COLLISION_GROUP_PLAYER_SENSOR: Group = Group::GROUP_3;
 pub const COLLISION_GROUP_ANTS: Group = Group::GROUP_4;
+pub const COLLISION_GROUP_DEAD_ANTS: Group = Group::GROUP_4;
+
+pub const RENDERLAYER_ANTS: RenderLayers = RenderLayers::layer(1);
+pub const RENDERLAYER_PLAYER: RenderLayers = RenderLayers::layer(2);

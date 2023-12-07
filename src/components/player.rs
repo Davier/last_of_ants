@@ -1,15 +1,20 @@
 use std::f32::consts::PI;
 
-use bevy::{prelude::*, utils::HashSet};
+use bevy::{prelude::*, render::view::RenderLayers, transform::commands, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
-    COLLISION_GROUP_WALLS, PLAYER_SIZE,
+    COLLISION_GROUP_ANTS, COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER,
+    COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, PLAYER_SIZE, RENDERLAYER_PLAYER,
+    TILE_SIZE,
 };
 
-use super::nav_mesh::NavNode;
+use super::{
+    ants::{Ant, AntPositionKind},
+    dead_ants::DeadAntBundle,
+    nav_mesh::NavNode,
+};
 
 #[derive(Bundle, LdtkEntity)]
 pub struct PlayerBundle {
@@ -17,8 +22,10 @@ pub struct PlayerBundle {
     pub sprite: SpriteBundle,
     pub controller: KinematicCharacterController,
     pub collider: Collider,
+    pub collider_mass: ColliderMassProperties,
     // The velocity is only used by us since it's not a RigidBody
     pub velocity: Velocity,
+    pub render_layers: RenderLayers,
 }
 
 impl Default for PlayerBundle {
@@ -33,27 +40,37 @@ impl Default for PlayerBundle {
                 ..default()
             },
             collider: Collider::cuboid(PLAYER_SIZE.x / 2., PLAYER_SIZE.y / 2.),
+            collider_mass: ColliderMassProperties::Density(1.),
             player: Default::default(),
             controller: KinematicCharacterController {
                 min_slope_slide_angle: PI / 5.,
                 filter_groups: Some(CollisionGroups::new(
                     COLLISION_GROUP_PLAYER,
-                    COLLISION_GROUP_WALLS | COLLISION_GROUP_ANTS,
+                    COLLISION_GROUP_WALLS | COLLISION_GROUP_DEAD_ANTS,
                 )),
+                apply_impulse_to_dynamic_bodies: false, // FIXME: I couldn't get it to work
+                autostep: Some(CharacterAutostep {
+                    include_dynamic_bodies: true,
+                    max_height: CharacterLength::Relative(0.4),
+                    ..default()
+                }),
                 ..Default::default()
             },
             velocity: Default::default(),
+            render_layers: RENDERLAYER_PLAYER,
         }
     }
 }
 
 pub fn update_player_sensor(
+    mut commands: Commands,
     player_sensors: Query<(&PlayerWallSensor, &CollidingEntities)>,
-    mut players: Query<&mut Player>,
+    mut players: Query<(&mut Player, &GlobalTransform)>,
     nav_nodes: Query<&NavNode>,
+    ants: Query<(&Ant, &Transform, &GlobalTransform, &Parent)>,
 ) {
-    for (player, colliding_entities) in player_sensors.iter() {
-        let Ok(mut player) = players.get_mut(player.player) else {
+    for (sensor, colliding_entities) in player_sensors.iter() {
+        let Ok((mut player, player_transform_global)) = players.get_mut(sensor.player) else {
             warn!("Unattached player sensor");
             continue;
         };
@@ -63,31 +80,52 @@ pub fn update_player_sensor(
         player.on_ground.clear();
         player.on_wall.clear();
         for colliding_entity in colliding_entities.iter() {
-            let Ok(nav_node) = nav_nodes.get(colliding_entity) else {
-                continue;
-            };
-            match nav_node {
-                NavNode::VerticalEdge { is_left_side, .. } => {
-                    player.on_wall.insert(colliding_entity);
-                    if *is_left_side {
-                        player.is_on_left_wall = true;
-                    } else {
-                        player.is_on_right_wall = true;
+            if let Ok((ant, ant_transform, ant_transform_global, ant_parent)) =
+                ants.get(colliding_entity)
+            {
+                if !matches!(ant.position_kind, AntPositionKind::Background) {
+                    // Spawn a dead ant outside of the player's collider
+                    // let offset = (ant_transform_global.translation().xy()
+                    //     - player_transform_global.translation().xy())
+                    // .normalize()
+                    //     * TILE_SIZE
+                    //     * 0.1;
+                    let mut transform = *ant_transform;
+                    // transform.translation.x += offset.x;
+                    // transform.translation.y += offset.y; // This caused ants to go though walls, I reduced the dead ants' size instead
+                    commands
+                        .spawn(DeadAntBundle::new(transform))
+                        .set_parent(ant_parent.get());
+                    // Despawn the alive ant
+                    commands
+                        .entity(ant_parent.get())
+                        .remove_children(&[colliding_entity]);
+                    commands.entity(colliding_entity).despawn();
+                }
+            } else if let Ok(nav_node) = nav_nodes.get(colliding_entity) {
+                match nav_node {
+                    NavNode::VerticalEdge { is_left_side, .. } => {
+                        player.on_wall.insert(colliding_entity);
+                        if *is_left_side {
+                            player.is_on_left_wall = true;
+                        } else {
+                            player.is_on_right_wall = true;
+                        }
                     }
+                    NavNode::HorizontalEdge {
+                        is_up_side: false, ..
+                    } => {
+                        player.on_ground.insert(colliding_entity);
+                    }
+                    NavNode::HorizontalEdge {
+                        is_up_side: true, ..
+                    } => {
+                        // The sensor is now only at the player's feets, collisions
+                        // with the ceiling are detected with the character controller
+                        // player.is_on_ceiling = true;
+                    }
+                    _ => (),
                 }
-                NavNode::HorizontalEdge {
-                    is_up_side: false, ..
-                } => {
-                    player.on_ground.insert(colliding_entity);
-                }
-                NavNode::HorizontalEdge {
-                    is_up_side: true, ..
-                } => {
-                    // The sensor is now only at the player's feets, collisions
-                    // with the ceiling are detected with the character controller
-                    // player.is_on_ceiling = true;
-                }
-                _ => (),
             }
         }
     }
@@ -126,7 +164,10 @@ pub fn spawn_player_sensor(
                 ActiveEvents::COLLISION_EVENTS,
                 ActiveCollisionTypes::STATIC_STATIC,
                 CollidingEntities::default(),
-                CollisionGroups::new(COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS),
+                CollisionGroups::new(
+                    COLLISION_GROUP_PLAYER_SENSOR,
+                    COLLISION_GROUP_WALLS | COLLISION_GROUP_ANTS,
+                ),
             ))
             .set_parent(entity);
     }

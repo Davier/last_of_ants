@@ -6,7 +6,7 @@ use itertools::Itertools;
 
 use crate::{
     COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
-    COLLISION_GROUP_WALLS, TILE_INT_EMPTY, TILE_SIZE, WALL_Z_FACTOR,
+    COLLISION_GROUP_WALLS, TILE_INT_EMPTY, TILE_SIZE, WALL_Z_FACTOR, COLLISION_GROUP_DEAD_ANTS,
 };
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
@@ -162,7 +162,7 @@ pub fn spawn_nav_mesh(
         // Make a Node for each tile and edge, linking them to their neighbors' entities
         let wall_collision_group = CollisionGroups::new(
             COLLISION_GROUP_WALLS,
-            COLLISION_GROUP_PLAYER | COLLISION_GROUP_PLAYER_SENSOR | COLLISION_GROUP_ANTS,
+            COLLISION_GROUP_PLAYER | COLLISION_GROUP_PLAYER_SENSOR | COLLISION_GROUP_ANTS | COLLISION_GROUP_DEAD_ANTS,
         );
         for tile in grid_iter {
             // Non empty tiles have no edges

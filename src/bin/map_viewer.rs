@@ -1,4 +1,4 @@
-use bevy::{prelude::*, diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin}, render::camera};
+use bevy::{prelude::*, diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin}, render::{camera, view::RenderLayers}};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::render::RapierDebugRenderPlugin;
@@ -39,9 +39,9 @@ fn main() {
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(500., 500., 0.),
+        transform: Transform::from_xyz(500., 500., 500.),
         ..default()
-    });
+    }).insert(RenderLayers::all());
 
     commands.spawn(LdtkWorldBundle {
         ldtk_handle: asset_server.load("Ant nest.ldtk"),

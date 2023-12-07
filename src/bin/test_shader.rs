@@ -3,17 +3,21 @@
 use std::f32::consts::PI;
 
 use bevy::{
+    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
     prelude::*,
     reflect::TypePath,
     render::render_resource::{AsBindGroup, ShaderRef},
     sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle},
 };
+use rand::Rng;
 
 fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins,
             Material2dPlugin::<CustomMaterial>::default(),
+            FrameTimeDiagnosticsPlugin,
+            LogDiagnosticsPlugin::default(),
         ))
         .add_systems(Startup, setup)
         .add_systems(Update, move_forward)
@@ -29,13 +33,22 @@ fn setup(
     // camera
     commands.spawn(Camera2dBundle::default());
 
-    // quad
-    commands.spawn(MaterialMesh2dBundle {
-        mesh: meshes.add(Mesh::from(shape::Quad::default())).into(),
-        transform: Transform::from_xyz(100., 0., 0.).with_scale(Vec3::splat(128.)),
-        material: materials.add(CustomMaterial { color: Color::BLUE }),
-        ..default()
-    });
+    let mut rng = rand::thread_rng();
+    for _ in 0..1000 {
+        let transform = Transform::from_xyz(
+            300. * (rng.gen::<f32>() * 2. - 1.),
+            300. * (rng.gen::<f32>() * 2. - 1.),
+            0.,
+        )
+        .with_scale(Vec3::splat(10. + 10. * rng.gen::<f32>()))
+        .with_rotation(Quat::from_rotation_z(rng.gen::<f32>() * 2. * PI));
+        commands.spawn(MaterialMesh2dBundle {
+            mesh: meshes.add(Mesh::from(shape::Quad::default())).into(),
+            transform,
+            material: materials.add(CustomMaterial { color: Color::BLUE }),
+            ..default()
+        });
+    }
 }
 
 // This is the struct that will be passed to your shader
@@ -61,9 +74,11 @@ fn move_forward(
     inputs: Res<Input<KeyCode>>,
 ) {
     for mut transform in ants.iter_mut() {
-        let forward = dbg!(transform.local_x());
+        let forward = transform.local_y();
         if inputs.pressed(KeyCode::W) {
             transform.translation += forward * 50.0 * time.delta_seconds();
+        } else if inputs.pressed(KeyCode::S) {
+            transform.translation -= forward * 50.0 * time.delta_seconds();
         }
         let angle = if inputs.pressed(KeyCode::A) {
             1.
@@ -73,6 +88,5 @@ fn move_forward(
             0.
         };
         transform.rotate_local_z(angle * PI / 8. * time.delta_seconds());
-        dbg!(transform.translation);
     }
 }

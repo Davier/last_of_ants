@@ -17,3 +17,15 @@ pub fn toggle_on_key(key: KeyCode) -> impl FnMut(Res<Input<KeyCode>>, Local<bool
 pub fn toggle_physics_debug(mut config: ResMut<DebugRenderContext>) {
     config.enabled = !config.enabled;
 }
+
+pub fn run_after(count: usize) -> impl FnMut(Local<usize>) -> bool + Clone {
+    move |mut local_count| {
+        if *local_count == count {
+            *local_count += 1;
+            true
+        } else {
+            *local_count += 1;
+            false
+        }
+    }
+}
