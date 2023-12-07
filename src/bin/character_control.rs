@@ -1,17 +1,18 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, render::view::RenderLayers};
 use bevy_ecs_ldtk::prelude::*;
 // use bevy_framepace::FramepacePlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        ants::debug_ants,
-        nav_mesh::debug_nav_mesh,
+        ants::{debug_ants, AntBundle},
+        nav_mesh::{debug_nav_mesh, NavNode},
         player::{update_player_sensor, Player},
     },
-    helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
+    helpers::{on_key_just_pressed, run_after, toggle_on_key, toggle_physics_debug},
     GamePlugin, TILE_SIZE,
 };
+use rand::{seq::IteratorRandom, Rng};
 
 fn main() {
     App::new()
@@ -30,6 +31,7 @@ fn main() {
                 toggle_physics_debug.run_if(on_key_just_pressed(KeyCode::P)),
                 attach_camera_to_player,
                 player_movement.after(update_player_sensor),
+                spawn_ants_on_navmesh.run_if(run_after(10)), // FIXME
             ),
         )
         .insert_resource(LevelSelection::index(0))
@@ -37,10 +39,16 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(0., 0., 0.),
-        ..default()
-    });
+    commands
+        .spawn(Camera2dBundle {
+            transform: Transform::from_xyz(0., 0., 500.),
+            projection: OrthographicProjection {
+                scale: 0.5,
+                ..default()
+            },
+            ..default()
+        })
+        .insert(RenderLayers::all());
 
     commands.spawn(LdtkWorldBundle {
         ldtk_handle: asset_server.load("Ant nest.ldtk"),
@@ -77,7 +85,10 @@ fn player_movement(
     let max_sliding_velocity = 4. * TILE_SIZE;
     let jump_tolerance = 0.1; // [s]
 
-    let is_on_ground = !player.on_ground.is_empty();
+    // let is_on_ground = !player.on_ground.is_empty();
+    let is_on_ground = controller_output
+        .map(|output| output.grounded)
+        .unwrap_or(true);
     let is_on_wall = !player.on_wall.is_empty();
     if player.is_on_left_wall {
         *last_time_on_left_wall = time.elapsed_seconds();
@@ -181,4 +192,51 @@ fn attach_camera_to_player(
         let camera = camera.single();
         commands.entity(camera).set_parent(player);
     }
+}
+
+fn spawn_ants_on_navmesh(
+    mut commands: Commands,
+    // mut level_events: EventReader<LevelEvent>,
+    nav_nodes: Query<(Entity, &GlobalTransform, &NavNode)>,
+    level: Query<(&LevelIid, &Children)>,
+    named_transform: Query<(Entity, &Name, &GlobalTransform)>,
+) {
+    // for level_event in level_events.read() {
+    //     let LevelEvent::Transformed(level_iid) = level_event else {
+    //         continue;
+    //     };
+    let mut rng = rand::thread_rng();
+    // let level_children = level.iter().find(|(iid, _)| *iid == level_iid).unwrap().1;
+    let level_children = level.single().1;
+    let (entities_holder, _, entities_holder_pos) = level_children
+        .iter()
+        .filter_map(|child| named_transform.get(*child).ok())
+        .find(|(_, name, _)| name.as_str() == "Entities")
+        .unwrap();
+
+    for _ in 0..100 {
+        let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
+        else {
+            return;
+        };
+
+        let direction = Vec3::new(
+            rng.gen::<f32>() - 0.5,
+            rng.gen::<f32>() - 0.5,
+            rng.gen::<f32>() - 0.5,
+        )
+        .normalize();
+        let speed = 40.;
+        AntBundle::spawn_on_nav_node(
+            &mut commands,
+            direction,
+            speed,
+            nav_node_entity,
+            nav_node,
+            nav_node_pos,
+            entities_holder,
+            entities_holder_pos,
+        );
+    }
+    // }
 }

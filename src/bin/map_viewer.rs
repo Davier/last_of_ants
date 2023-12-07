@@ -1,11 +1,16 @@
-use bevy::{prelude::*, window::PrimaryWindow};
+use bevy::{
+    diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
+    prelude::*,
+    render::{camera, view::RenderLayers},
+    window::PrimaryWindow,
+};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use itertools::Itertools;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, AntBundle},
+        ants::{debug_ants, Ant, AntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
         pheromon::{Gradient, Pheromon, PheromonBuffer},
     },
@@ -20,6 +25,7 @@ fn main() {
             GamePlugin,
             WorldInspectorPlugin::default().run_if(toggle_on_key(KeyCode::I)),
             RapierDebugRenderPlugin::default().disabled(),
+            FrameTimeDiagnosticsPlugin,
         ))
         .add_systems(Startup, setup)
         .add_systems(
@@ -35,6 +41,7 @@ fn main() {
                 debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
                 pheromon_diffusion.run_if(toggle_on_key(KeyCode::H)),
                 update_gradient.after(pheromon_diffusion),
+                update_text_counters,
             ),
         )
         .insert_resource(LevelSelection::index(0))
@@ -42,27 +49,53 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn(Camera2dBundle {
-        transform: Transform::from_xyz(500., 500., 0.),
-        ..default()
-    });
+    commands
+        .spawn(Camera2dBundle {
+            transform: Transform::from_xyz(500., 500., 500.),
+            ..default()
+        })
+        .insert(RenderLayers::all());
 
     commands.spawn(LdtkWorldBundle {
         ldtk_handle: asset_server.load("Ant nest.ldtk"),
         ..Default::default()
     });
 
-    commands.spawn(TextBundle::from_section(
-        "\
+    commands
+        .spawn(TextBundle::from_sections([
+            TextSection::new(
+                "\
         Use WASD to move\n\
+        Use A and E to zoom in and out\n\
         Press SPACE to spawn ants\n\
         Press N to show the navigation mesh\n\
         Press I to show the world inspector\n\
         Press P to show the physics debug view\n\
         Press H to show the pheromons then click left/right to add/sub\n\
-        Press O to show the ants debug view",
-        default(),
-    ));
+        Press O to show the ants debug view\n",
+                default(),
+            ),
+            TextSection::default(), // FPS counter
+            TextSection::default(), // Ant counter
+        ]))
+        .insert(TextCounters);
+}
+
+#[derive(Debug, Component)]
+struct TextCounters;
+
+fn update_text_counters(
+    mut texts: Query<&mut Text, With<TextCounters>>,
+    diagnostics: Res<DiagnosticsStore>,
+    ants: Query<(), With<Ant>>,
+) {
+    if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+        if let Some(ema) = fps.smoothed() {
+            texts.single_mut().sections[1].value = format!("FPS: {ema:.2}\n")
+        }
+    }
+    let num_ants = ants.iter().len();
+    texts.single_mut().sections[2].value = format!("Ants: {num_ants}\n");
 }
 
 fn init_pheromons(mut commands: Commands, nodes: Query<(Entity, &NavNode), Added<NavNode>>) {
@@ -89,7 +122,7 @@ fn spawn_ants_on_navmesh(
         .find(|(_, name, _)| name.as_str() == "Entities")
         .unwrap();
 
-    for _ in 0..10 {
+    for _ in 0..100 {
         let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
         else {
             return;
@@ -152,6 +185,7 @@ fn camera_movement(
     mut transform: Query<&mut Transform, With<Camera2d>>,
     inputs: Res<Input<KeyCode>>,
     time: Res<Time>,
+    mut cameras: Query<&mut OrthographicProjection, With<Camera2d>>,
 ) {
     let dt = time.delta_seconds();
     let speed = 400.;
@@ -170,6 +204,14 @@ fn camera_movement(
     }
     transform.single_mut().translation.x += delta_pos.x * speed * dt;
     transform.single_mut().translation.y += delta_pos.y * speed * dt;
+    // Zoom
+    let mut camera_projection = cameras.single_mut();
+    if inputs.pressed(KeyCode::Q) {
+        camera_projection.scale = (camera_projection.scale - 0.05).max(0.5);
+    }
+    if inputs.pressed(KeyCode::E) {
+        camera_projection.scale = (camera_projection.scale + 0.05).min(2.);
+    }
 }
 
 fn pheromon_diffusion(
@@ -222,13 +264,10 @@ fn update_gradient(
                 query_pheromon.get(*down).unwrap().0,
                 query_pheromon.get(*right).unwrap().0,
                 query_pheromon.get(*left).unwrap().0,
-                0.
+                0.,
             ),
             NavNode::HorizontalEdge {
-                left,
-                right,
-                back,
-                ..
+                left, right, back, ..
             } => (
                 0.0,
                 0.0,
@@ -236,12 +275,7 @@ fn update_gradient(
                 query_pheromon.get(*left).unwrap().0,
                 query_pheromon.get(*back).unwrap().0,
             ),
-            NavNode::VerticalEdge {
-                up,
-                down,
-                back,
-                ..
-            } => (
+            NavNode::VerticalEdge { up, down, back, .. } => (
                 query_pheromon.get(*up).unwrap().0,
                 query_pheromon.get(*down).unwrap().0,
                 0.0,
