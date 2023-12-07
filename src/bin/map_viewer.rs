@@ -12,7 +12,7 @@ use last_of_ants::{
     components::{
         ants::{debug_ants, Ant, AntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
-        pheromon::{Gradient, Pheromon, PheromonBuffer},
+        pheromon::{Gradient, Pheromons, PheromonsBuffer, N_PH, PH1, PH2},
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     GamePlugin,
@@ -100,11 +100,11 @@ fn update_text_counters(
 
 fn init_pheromons(mut commands: Commands, nodes: Query<(Entity, &NavNode), Added<NavNode>>) {
     for (id, node) in nodes.iter() {
-        commands
-            .entity(id)
-            .insert(Pheromon::default())
-            .insert(PheromonBuffer::default())
-            .insert(Gradient::default());
+        commands.entity(id).insert((
+            Pheromons::default(),
+            PheromonsBuffer::default(),
+            Gradient::default(),
+        ));
     }
 }
 
@@ -221,86 +221,90 @@ fn camera_movement(
 }
 
 fn pheromon_diffusion(
-    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromon), With<PheromonBuffer>>,
-    mut query_pheromon_buffers: Query<&mut PheromonBuffer, With<Pheromon>>,
+    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons), With<PheromonsBuffer>>,
+    mut query_pheromon_buffers: Query<&mut PheromonsBuffer, With<Pheromons>>,
 ) {
     // % going to neighbours
     let diffusion_rate = 0.01;
 
     // Compute diffusion to neighbours
-    for (_, node, ph) in query_nodes.iter() {
-        let diffused = ph.0 * diffusion_rate;
-        if diffused > 0.005 {
-            let neighbors = node.neighbors();
-            let diffused_per_neighbor = diffused / neighbors.len() as f32;
+    for i in 0..N_PH {
+        for (_, node, ph) in query_nodes.iter() {
+            let diffused = ph.0[i] * diffusion_rate;
+            if diffused > 0.005 {
+                let neighbors = node.neighbors();
+                let diffused_per_neighbor = diffused / neighbors.len() as f32;
 
-            for neighbor in neighbors {
-                let mut ph_b_neighbor = query_pheromon_buffers.get_mut(neighbor).unwrap();
-                ph_b_neighbor.0 += diffused_per_neighbor;
+                for neighbor in neighbors {
+                    let mut ph_b_neighbor = query_pheromon_buffers.get_mut(neighbor).unwrap();
+                    ph_b_neighbor.0[i] += diffused_per_neighbor;
+                }
             }
         }
-    }
 
-    // Apply diffusion
-    for (id, _, mut ph) in query_nodes.iter_mut() {
-        let mut ph_b = query_pheromon_buffers.get_mut(id).unwrap();
-        ph.0 = ph.0 * (1.0 - diffusion_rate) + ph_b.0;
-        ph_b.0 = 0.;
+        // Apply diffusion
+        for (id, _, mut ph) in query_nodes.iter_mut() {
+            let mut ph_b = query_pheromon_buffers.get_mut(id).unwrap();
+            ph.0[i] = ph.0[i] * (1.0 - diffusion_rate) + ph_b.0[i];
+            ph_b.0[i] = 0.;
+        }
     }
 }
 
 fn update_gradient(
-    mut query_changed_nodes: Query<(Entity, &NavNode, &Pheromon, &mut Gradient)>,
-    query_pheromon: Query<&Pheromon, With<NavNode>>,
+    mut query_changed_nodes: Query<(Entity, &NavNode, &Pheromons, &mut Gradient)>,
+    query_pheromon: Query<&Pheromons, With<NavNode>>,
 ) {
     let vn = Vec2::new(0.0, 1.0);
     let vs = Vec2::new(0.0, -1.0);
     let ve = Vec2::new(1.0, 0.0);
     let vw = Vec2::new(-1.0, 0.0);
 
-    for (id, node, ph, mut gd) in query_changed_nodes.iter_mut() {
-        let (n, s, e, w, b) = match node {
-            NavNode::Background {
-                up,
-                left,
-                down,
-                right,
-            } => (
-                query_pheromon.get(*up).unwrap().0,
-                query_pheromon.get(*down).unwrap().0,
-                query_pheromon.get(*right).unwrap().0,
-                query_pheromon.get(*left).unwrap().0,
-                0.,
-            ),
-            NavNode::HorizontalEdge {
-                left, right, back, ..
-            } => (
-                0.0,
-                0.0,
-                query_pheromon.get(*right).unwrap().0,
-                query_pheromon.get(*left).unwrap().0,
-                query_pheromon.get(*back).unwrap().0,
-            ),
-            NavNode::VerticalEdge { up, down, back, .. } => (
-                query_pheromon.get(*up).unwrap().0,
-                query_pheromon.get(*down).unwrap().0,
-                0.0,
-                0.0,
-                query_pheromon.get(*back).unwrap().0,
-            ),
-        };
-        // TODO: back
+    for i in 0..N_PH {
+        for (id, node, ph, mut gd) in query_changed_nodes.iter_mut() {
+            let (n, s, e, w, b) = match node {
+                NavNode::Background {
+                    up,
+                    left,
+                    down,
+                    right,
+                } => (
+                    query_pheromon.get(*up).unwrap().0[i],
+                    query_pheromon.get(*down).unwrap().0[i],
+                    query_pheromon.get(*right).unwrap().0[i],
+                    query_pheromon.get(*left).unwrap().0[i],
+                    0.,
+                ),
+                NavNode::HorizontalEdge {
+                    left, right, back, ..
+                } => (
+                    0.0,
+                    0.0,
+                    query_pheromon.get(*right).unwrap().0[i],
+                    query_pheromon.get(*left).unwrap().0[i],
+                    query_pheromon.get(*back).unwrap().0[i],
+                ),
+                NavNode::VerticalEdge { up, down, back, .. } => (
+                    query_pheromon.get(*up).unwrap().0[i],
+                    query_pheromon.get(*down).unwrap().0[i],
+                    0.0,
+                    0.0,
+                    query_pheromon.get(*back).unwrap().0[i],
+                ),
+            };
+            // TODO: back
 
-        if ph.0 >= n.max(s).max(e).max(w) {
-            gd.0 = Vec2::ZERO;
-        } else {
-            gd.0 = n * vn + s * vs + e * ve + w * vw;
+            if ph.0[i] >= n.max(s).max(e).max(w) {
+                gd.0[i] = Vec2::ZERO;
+            } else {
+                gd.0[i] = n * vn + s * vs + e * ve + w * vw;
+            }
         }
     }
 }
 
 fn debug_pheromons(
-    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromon, &Gradient)>,
+    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &Gradient)>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
     mut gizmos: Gizmos,
 
@@ -331,18 +335,20 @@ fn debug_pheromons(
         let closest = &mut distances[0];
 
         gizmos.circle_2d(closest.1, 0.5, Color::RED);
-        gizmos.ray_2d(cursor_world_position, closest.4 .0, Color::ALICE_BLUE);
+        gizmos.ray_2d(cursor_world_position, closest.4 .0[PH1], Color::ALICE_BLUE);
 
         if buttons.pressed(MouseButton::Left) {
-            closest.3 .0 += 1.;
-        } else if buttons.just_pressed(MouseButton::Right) {
-            closest.3 .0 = 0.0_f32.max(closest.3 .0 - 1.0);
+            closest.3.0[PH1] += 1.;
+        } else if buttons.pressed(MouseButton::Right) {
+            closest.3.0[PH2] += 1.;
         }
     }
 
     for (e, n, ph, g) in query_nodes.iter() {
         let t = query_transform.get(e).unwrap();
-        gizmos.circle_2d(t.translation().xy(), ph.0, Color::PINK);
-        gizmos.ray_2d(t.translation().xy(), g.0 * 2.0, Color::BLUE);
+        gizmos.circle_2d(t.translation().xy(), ph.0[PH1], Color::PINK);
+        gizmos.ray_2d(t.translation().xy(), g.0[PH1] * 2.0, Color::BLUE);
+        gizmos.circle_2d(t.translation().xy(), ph.0[PH2], Color::YELLOW_GREEN);
+        gizmos.ray_2d(t.translation().xy(), g.0[PH2] * 2.0, Color::YELLOW);
     }
 }
