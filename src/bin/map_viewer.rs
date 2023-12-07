@@ -327,7 +327,7 @@ fn debug_pheromons(
         gizmos.circle_2d(closest.1, 0.5, Color::RED);
         gizmos.ray_2d(cursor_world_position, closest.4 .0, Color::ALICE_BLUE);
 
-        if buttons.just_pressed(MouseButton::Left) {
+        if buttons.pressed(MouseButton::Left) {
             closest.3 .0 += 1.;
         } else if buttons.just_pressed(MouseButton::Right) {
             closest.3 .0 = 0.0_f32.max(closest.3 .0 - 1.0);
