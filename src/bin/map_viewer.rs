@@ -49,6 +49,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(TextBundle::from_section(
         "\
         Use WASD to move\n\
+        Use A and E to zoom in and out\n\
         Press SPACE to spawn ants\n\
         Press N to show the navigation mesh\n\
         Press I to show the world inspector\n\
@@ -135,6 +136,7 @@ fn camera_movement(
     mut transform: Query<&mut Transform, With<Camera2d>>,
     inputs: Res<Input<KeyCode>>,
     time: Res<Time>,
+    mut cameras: Query<&mut OrthographicProjection, With<Camera2d>>,
 ) {
     let dt = time.delta_seconds();
     let speed = 400.;
@@ -153,4 +155,12 @@ fn camera_movement(
     }
     transform.single_mut().translation.x += delta_pos.x * speed * dt;
     transform.single_mut().translation.y += delta_pos.y * speed * dt;
+    // Zoom
+    let mut camera_projection = cameras.single_mut();
+    if inputs.pressed(KeyCode::Q) {
+        camera_projection.scale = (camera_projection.scale - 0.05).max(0.5);
+    }
+    if inputs.pressed(KeyCode::E) {
+        camera_projection.scale = (camera_projection.scale + 0.05).min(2.);
+    }
 }
