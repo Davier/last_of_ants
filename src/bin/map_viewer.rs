@@ -179,68 +179,23 @@ fn pheromon_diffusion(
     // % going to neighbours
     let diffusion_rate = 0.01;
 
-    // Take from neighbours
-    for (id, node, ph) in query_nodes.iter() {
+    // Compute diffusion to neighbours
+    for (_, node, ph) in query_nodes.iter() {
         let diffused = ph.0 * diffusion_rate;
-        if diffused > 0.01 {
-            match node {
-                NavNode::Background {
-                    up,
-                    left,
-                    down,
-                    right,
-                } => {
-                    let diffused = diffused / 4.0;
-                    if ph.0 > 0. {
-                        debug!("id {:?}, ph {}, right: {:?}", id, ph.0, right);
-                    }
+        if diffused > 0.005 {
+            let neighbors = node.neighbors();
+            let diffused_per_neighbor = diffused / neighbors.len() as f32;
 
-                    let mut ph_b_u = query_pheromon_buffers.get_mut(*up).unwrap();
-                    ph_b_u.0 += diffused;
-
-                    let mut ph_b_d = query_pheromon_buffers.get_mut(*down).unwrap();
-                    ph_b_d.0 += diffused;
-
-                    let mut ph_b_r = query_pheromon_buffers.get_mut(*right).unwrap();
-                    ph_b_r.0 += diffused;
-
-                    let mut ph_b_l = query_pheromon_buffers.get_mut(*left).unwrap();
-                    ph_b_l.0 += diffused;
-                }
-                NavNode::HorizontalEdge {
-                    left, right, back, ..
-                } => {
-                    let diffused = diffused / 3.0;
-
-                    let mut ph_b_r = query_pheromon_buffers.get_mut(*right).unwrap();
-                    ph_b_r.0 += diffused;
-
-                    let mut ph_b_l: Mut<'_, PheromonBuffer> =
-                        query_pheromon_buffers.get_mut(*left).unwrap();
-                    ph_b_l.0 += diffused;
-
-                    let mut ph_b_b = query_pheromon_buffers.get_mut(*back).unwrap();
-                    ph_b_b.0 += diffused;
-                }
-                NavNode::VerticalEdge { up, down, back, .. } => {
-                    let diffused = diffused / 2.0;
-
-                    let mut ph_b_u = query_pheromon_buffers.get_mut(*up).unwrap();
-                    ph_b_u.0 += diffused;
-
-                    let mut ph_b_d = query_pheromon_buffers.get_mut(*down).unwrap();
-                    ph_b_d.0 += diffused;
-
-                    let mut ph_b_b = query_pheromon_buffers.get_mut(*back).unwrap();
-                    ph_b_b.0 += diffused;
-                }
+            for neighbor in neighbors {
+                let mut ph_b_neighbor = query_pheromon_buffers.get_mut(neighbor).unwrap();
+                ph_b_neighbor.0 += diffused_per_neighbor;
             }
         }
     }
 
+    // Apply diffusion
     for (id, _, mut ph) in query_nodes.iter_mut() {
         let mut ph_b = query_pheromon_buffers.get_mut(id).unwrap();
-        debug!("id {:?}, ph {}, ph_b {:?}", id, ph.0, ph_b.0);
         ph.0 = ph.0 * (1.0 - diffusion_rate) + ph_b.0;
         ph_b.0 = 0.;
     }
@@ -256,7 +211,7 @@ fn update_gradient(
     let vw = Vec2::new(-1.0, 0.0);
 
     for (id, node, ph, mut gd) in query_changed_nodes.iter_mut() {
-        let (n, s, e, w) = match node {
+        let (n, s, e, w, b) = match node {
             NavNode::Background {
                 up,
                 left,
@@ -267,34 +222,34 @@ fn update_gradient(
                 query_pheromon.get(*down).unwrap().0,
                 query_pheromon.get(*right).unwrap().0,
                 query_pheromon.get(*left).unwrap().0,
+                0.
             ),
             NavNode::HorizontalEdge {
                 left,
-                left_kind,
                 right,
-                right_kind,
                 back,
-                is_up_side,
+                ..
             } => (
                 0.0,
                 0.0,
                 query_pheromon.get(*right).unwrap().0,
                 query_pheromon.get(*left).unwrap().0,
+                query_pheromon.get(*back).unwrap().0,
             ),
             NavNode::VerticalEdge {
                 up,
-                up_kind,
                 down,
-                down_kind,
                 back,
-                is_left_side,
+                ..
             } => (
                 query_pheromon.get(*up).unwrap().0,
                 query_pheromon.get(*down).unwrap().0,
                 0.0,
                 0.0,
+                query_pheromon.get(*back).unwrap().0,
             ),
         };
+        // TODO: back
 
         if ph.0 >= n.max(s).max(e).max(w) {
             gd.0 = Vec2::ZERO;
