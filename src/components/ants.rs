@@ -198,20 +198,25 @@ pub fn update_ant_position_kinds(
                 // If the ant is no longer colliding with any wall, it means that it went past an outward turn
                 else if colliding_entities.is_empty() {
                     let new_wall_is_left_side = ant.direction.x > 0.;
-                    let mut wall_transform_relative =
-                        ant.current_wall.1.reparented_to(ant_transform_global);
-                    wall_transform_relative.translation.y +=
-                        TILE_SIZE / 2. * if is_up_side { 1. } else { -1. };
-                    wall_transform_relative.translation.x +=
-                        TILE_SIZE / 2. * if new_wall_is_left_side { 1. } else { -1. };
 
+                    let current_wall = nav_nodes.get(ant.current_wall.0).unwrap();
+                    let (wall_entity, _wall_node, wall_transform_global) = {
+                        let NavNode::HorizontalEdge { left, right, .. } = current_wall.1 else {
+                            dbg!(current_wall);
+                            panic!();
+                        };
+                        let neighbor = if new_wall_is_left_side { right } else { left };
+                        nav_nodes.get(*neighbor).unwrap()
+                    };
+                    let wall_transform_relative =
+                        wall_transform_global.reparented_to(ant_transform_global);
                     place_ant_on_vertical_wall(
                         new_wall_is_left_side,
                         &mut ant,
                         &mut ant_transform,
                         &wall_transform_relative,
                     );
-                    // FIXME: how to update ant.current_wall?
+                    ant.current_wall = (wall_entity, *wall_transform_global);
                 }
             }
             AntPositionKind::VerticalWall { is_left_side } => {
@@ -248,20 +253,25 @@ pub fn update_ant_position_kinds(
                 // If the ant is no longer colliding with any wall, it means that it went past an outward turn
                 else if colliding_entities.is_empty() {
                     let new_wall_is_up_side = ant.direction.y < 0.;
-                    let mut wall_transform_relative =
-                        ant.current_wall.1.reparented_to(ant_transform_global);
-                    wall_transform_relative.translation.x +=
-                        TILE_SIZE / 2. * if is_left_side { -1. } else { 1. };
-                    wall_transform_relative.translation.y +=
-                        TILE_SIZE / 2. * if new_wall_is_up_side { -1. } else { 1. };
 
+                    let current_wall = nav_nodes.get(ant.current_wall.0).unwrap();
+                    let (wall_entity, _wall_node, wall_transform_global) = {
+                        let NavNode::VerticalEdge { up, down, .. } = current_wall.1 else {
+                            dbg!(current_wall);
+                            panic!();
+                        };
+                        let neighbor = if new_wall_is_up_side { down } else { up };
+                        nav_nodes.get(*neighbor).unwrap()
+                    };
+                    let wall_transform_relative =
+                        wall_transform_global.reparented_to(ant_transform_global);
                     place_ant_on_horizontal_wall(
                         new_wall_is_up_side,
                         &mut ant,
                         &mut ant_transform,
                         &wall_transform_relative,
                     );
-                    // FIXME: how to update ant.current_wall?
+                    ant.current_wall = (wall_entity, *wall_transform_global);
                 }
             }
         }
