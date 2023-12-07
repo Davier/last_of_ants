@@ -1,10 +1,10 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin}, render::camera};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, AntBundle},
+        ants::{debug_ants, AntBundle, Ant},
         nav_mesh::{debug_nav_mesh, NavNode},
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
@@ -18,6 +18,7 @@ fn main() {
             GamePlugin,
             WorldInspectorPlugin::default().run_if(toggle_on_key(KeyCode::I)),
             RapierDebugRenderPlugin::default().disabled(),
+            FrameTimeDiagnosticsPlugin,
         ))
         .add_systems(Startup, setup)
         .add_systems(
@@ -29,6 +30,7 @@ fn main() {
                 debug_ants.run_if(toggle_on_key(KeyCode::O)),
                 toggle_physics_debug.run_if(on_key_just_pressed(KeyCode::P)),
                 camera_movement,
+                update_text_counters,
             ),
         )
         .insert_resource(LevelSelection::index(0))
@@ -46,17 +48,40 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         ..Default::default()
     });
 
-    commands.spawn(TextBundle::from_section(
-        "\
+    commands
+        .spawn(TextBundle::from_sections([
+            TextSection::new(
+                "\
         Use WASD to move\n\
         Use A and E to zoom in and out\n\
         Press SPACE to spawn ants\n\
         Press N to show the navigation mesh\n\
         Press I to show the world inspector\n\
         Press P to show the physics debug view\n\
-        Press O to show the ants debug view",
-        default(),
-    ));
+        Press O to show the ants debug view\n",
+                default(),
+            ),
+            TextSection::default(), // FPS counter
+            TextSection::default(), // Ant counter
+        ]))
+        .insert(TextCounters);
+}
+
+#[derive(Debug, Component)]
+struct TextCounters;
+
+fn update_text_counters(
+    mut texts: Query<&mut Text, With<TextCounters>>,
+    diagnostics: Res<DiagnosticsStore>,
+    ants: Query<(), With<Ant>>,
+) {
+    if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
+        if let Some(ema) = fps.smoothed() {
+            texts.single_mut().sections[1].value = format!("FPS: {ema:.2}\n")
+        }
+    }
+    let num_ants = ants.iter().len();
+    texts.single_mut().sections[2].value = format!("Ants: {num_ants}\n");
 }
 
 fn spawn_ants_on_navmesh(
@@ -73,7 +98,7 @@ fn spawn_ants_on_navmesh(
         .find(|(_, name, _)| name.as_str() == "Entities")
         .unwrap();
 
-    for _ in 0..10 {
+    for _ in 0..100 {
         let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
         else {
             return;
