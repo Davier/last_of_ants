@@ -109,8 +109,10 @@ fn player_movement(
         .unwrap_or(false);
 
     let space_pressed = inputs.pressed(KeyCode::Space);
-    let left_pressed = inputs.pressed(KeyCode::A);
-    let right_pressed = inputs.pressed(KeyCode::D);
+    let _left_pressed = inputs.pressed(KeyCode::A);
+    let _right_pressed = inputs.pressed(KeyCode::D);
+    let left_pressed = _left_pressed && !_right_pressed;
+    let right_pressed = _right_pressed && !_left_pressed;
     let up_pressed = inputs.pressed(KeyCode::W);
     let down_pressed = inputs.pressed(KeyCode::S);
     let shift_pressed = inputs.pressed(KeyCode::ShiftLeft);
