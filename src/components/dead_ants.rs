@@ -18,6 +18,7 @@ pub struct DeadAntBundle {
     pub collider_mass: ColliderMassProperties,
     pub render_layers: RenderLayers,
     pub collision_groups: CollisionGroups,
+    pub ccd: Ccd,
 }
 
 impl DeadAntBundle {
@@ -43,6 +44,7 @@ impl DeadAntBundle {
                 COLLISION_GROUP_DEAD_ANTS,
                 COLLISION_GROUP_PLAYER | COLLISION_GROUP_WALLS,
             ),
+            ccd: Ccd::enabled(),
         }
     }
 }
