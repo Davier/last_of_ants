@@ -3,11 +3,14 @@
 use std::f32::consts::PI;
 
 use bevy::{
-    diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
+    diagnostic::FrameTimeDiagnosticsPlugin,
     prelude::*,
-    reflect::TypePath,
-    render::render_resource::{AsBindGroup, ShaderRef},
-    sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle},
+    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
+};
+use last_of_ants::{
+    components::ants::{Ant, AntPositionKind},
+    render::render_ant::{AntMaterial, AntMaterialPlugin},
+    ANT_SIZE,
 };
 use rand::Rng;
 
@@ -15,9 +18,11 @@ fn main() {
     App::new()
         .add_plugins((
             DefaultPlugins,
-            Material2dPlugin::<CustomMaterial>::default(),
+            AntMaterialPlugin,
             FrameTimeDiagnosticsPlugin,
-            LogDiagnosticsPlugin::default(),
+            // LogDiagnosticsPlugin::default(),
+            // RenderWorldInspectorPlugin::default(),
+            // WorldInspectorPlugin::default(),
         ))
         .add_systems(Startup, setup)
         .add_systems(Update, move_forward)
@@ -28,53 +33,79 @@ fn main() {
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<CustomMaterial>>,
+    mut materials: ResMut<Assets<AntMaterial>>,
 ) {
     // camera
-    commands.spawn(Camera2dBundle::default());
+    let mut camera = Camera2dBundle::default();
+    camera.projection.scale = 0.2;
+    commands.spawn(camera);
 
     let mut rng = rand::thread_rng();
-    for _ in 0..1000 {
-        let transform = Transform::from_xyz(
-            300. * (rng.gen::<f32>() * 2. - 1.),
-            300. * (rng.gen::<f32>() * 2. - 1.),
+    let mesh: Mesh2dHandle = meshes
+        .add(Mesh::from(shape::Quad {
+            size: ANT_SIZE,
+            flip: false,
+        }))
+        .into();
+    let material_side: Handle<AntMaterial> = materials.add(AntMaterial { is_side: 1 });
+    let material_top: Handle<AntMaterial> = materials.add(AntMaterial { is_side: 0 });
+    // commands.spawn(MaterialMesh2dBundle {
+    //     mesh: mesh.clone(),
+    //     transform: Transform::from_xyz(0., 0., 0.).with_scale(Vec3::new(128., 128., 128.)),
+    //     material: material_top.clone(),
+    //     ..default()
+    // });
+    for _ in 0..100 {
+        let angle = rng.gen::<f32>() * 2. * PI;
+        let direction = dbg!(Vec3::new(angle.cos(), angle.sin(), 0.));
+        let is_side = rng.gen_bool(0.5);
+        let scale = rng.gen::<f32>() + 0.5;
+        let mut transform = Transform::from_xyz(
+            30. * (rng.gen::<f32>() * 2. - 1.),
+            30. * (rng.gen::<f32>() * 2. - 1.),
             0.,
-        )
-        .with_scale(Vec3::splat(10. + 10. * rng.gen::<f32>()))
-        .with_rotation(Quat::from_rotation_z(rng.gen::<f32>() * 2. * PI));
-        commands.spawn(MaterialMesh2dBundle {
-            mesh: meshes.add(Mesh::from(shape::Quad::default())).into(),
-            transform,
-            material: materials.add(CustomMaterial { color: Color::BLUE }),
-            ..default()
-        });
+        );
+        let material = if is_side {
+            transform.translation.z = 1.;
+            material_side.clone()
+        } else {
+            material_top.clone()
+        };
+        commands.spawn((
+            MaterialMesh2dBundle {
+                mesh: mesh.clone(),
+                transform,
+                material,
+                ..default()
+            },
+            Ant {
+                position_kind: if !is_side {
+                    AntPositionKind::Background
+                } else if rng.gen_bool(0.5) {
+                    AntPositionKind::VerticalWall {
+                        is_left_side: rng.gen_bool(0.5),
+                    }
+                } else {
+                    AntPositionKind::HorizontalWall {
+                        is_up_side: rng.gen_bool(0.5),
+                    }
+                },
+                speed: 30.,
+                direction,
+                current_wall: (Entity::PLACEHOLDER, GlobalTransform::default()),
+                scale,
+            },
+        ));
     }
-}
-
-// This is the struct that will be passed to your shader
-#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
-pub struct CustomMaterial {
-    #[uniform(0)]
-    color: Color,
-}
-
-/// The Material2d trait is very configurable, but comes with sensible defaults for all methods.
-/// You only need to implement functions for features that need non-default behavior. See the Material2d api docs for details!
-impl Material2d for CustomMaterial {
-    fn fragment_shader() -> ShaderRef {
-        "shaders/ant.wgsl".into()
-    }
-    // TODO: specialize on top/side view
-    // TODO: add instance buffer for customization: orientation
 }
 
 fn move_forward(
-    mut ants: Query<&mut Transform, With<Handle<CustomMaterial>>>,
+    mut ants: Query<(&mut Ant, &mut Transform), With<Handle<AntMaterial>>>,
     time: Res<Time>,
     inputs: Res<Input<KeyCode>>,
 ) {
-    for mut transform in ants.iter_mut() {
-        let forward = transform.local_y();
+    for (mut ant, mut transform) in ants.iter_mut() {
+        let forward = ant.direction;
         if inputs.pressed(KeyCode::W) {
             transform.translation += forward * 50.0 * time.delta_seconds();
         } else if inputs.pressed(KeyCode::S) {
@@ -86,7 +117,13 @@ fn move_forward(
             -1.
         } else {
             0.
-        };
-        transform.rotate_local_z(angle * PI / 8. * time.delta_seconds());
+        } * PI
+            / 8.
+            * time.delta_seconds()
+            * ant.speed
+            / (2. * PI);
+        // transform.rotate_local_z(angle * PI / 8. * time.delta_seconds());
+        // let (sin, cos) = angle.sin_cos();
+        ant.direction = Mat3::from_angle(angle) * ant.direction;
     }
 }

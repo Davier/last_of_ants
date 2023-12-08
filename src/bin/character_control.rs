@@ -229,10 +229,13 @@ fn spawn_ants_on_navmesh(
         )
         .normalize();
         let speed = 40.;
+        // let scale = rng.gen::<f32>() + 0.5;
+        let scale = 1.; // TODO
         AntBundle::spawn_on_nav_node(
             &mut commands,
             direction,
             speed,
+            scale,
             nav_node_entity,
             nav_node,
             nav_node_pos,

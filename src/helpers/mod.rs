@@ -1,3 +1,5 @@
+pub mod render_world_inspector;
+
 use bevy::prelude::*;
 use bevy_rapier2d::render::DebugRenderContext;
 

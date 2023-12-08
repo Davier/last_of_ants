@@ -1,9 +1,9 @@
-use bevy::{ecs::system::EntityCommands, prelude::*, render::view::{RenderLayers, NoFrustumCulling}};
+use bevy::{ecs::system::EntityCommands, prelude::*, render::view::RenderLayers};
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    ANT_SIZE, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
-    COLLISION_GROUP_WALLS, TILE_SIZE, WALL_Z_FACTOR, RENDERLAYER_ANTS,
+    ANT_SIZE, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS,
+    RENDERLAYER_ANTS, TILE_SIZE, WALL_Z_FACTOR,
 };
 
 use super::nav_mesh::{NavMeshLUT, NavNode};
@@ -21,10 +21,12 @@ pub struct AntBundle {
     pub render_layers: RenderLayers,
 }
 
-#[derive(Clone, Copy, Component, Reflect)]
+#[derive(Debug, Clone, Copy, Component, Reflect)]
 pub struct Ant {
     pub position_kind: AntPositionKind,
     pub speed: f32,
+    /// TODO: Scaled is only used for rendering for now
+    pub scale: f32,
     pub direction: Vec3,
     pub current_wall: (Entity, GlobalTransform), // FIXME: use relative transforms
 }
@@ -33,6 +35,7 @@ impl AntBundle {
     pub fn new_on_nav_node(
         direction: Vec3,
         speed: f32,
+        scale: f32,
         nav_node_entity: Entity,
         nav_node: &NavNode,
         nav_node_pos: &GlobalTransform,
@@ -67,6 +70,7 @@ impl AntBundle {
             ant: Ant {
                 position_kind,
                 speed,
+                scale,
                 direction,
                 current_wall,
             },
@@ -91,10 +95,13 @@ impl AntBundle {
             render_layers: RENDERLAYER_ANTS,
         }
     }
+
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn_on_nav_node<'c, 'w, 's>(
         commands: &'c mut Commands<'w, 's>,
         direction: Vec3,
         speed: f32,
+        scale: f32,
         nav_node_entity: Entity,
         nav_node: &NavNode,
         nav_node_pos: &GlobalTransform,
@@ -104,6 +111,7 @@ impl AntBundle {
         let mut command = commands.spawn(AntBundle::new_on_nav_node(
             direction,
             speed,
+            scale,
             nav_node_entity,
             nav_node,
             nav_node_pos,
@@ -114,7 +122,7 @@ impl AntBundle {
     }
 }
 
-#[derive(Clone, Copy, Reflect)]
+#[derive(Debug, Clone, Copy, Reflect)]
 pub enum AntPositionKind {
     Background,
     VerticalWall { is_left_side: bool },
@@ -169,9 +177,9 @@ pub fn update_ant_position_kinds(
             AntPositionKind::HorizontalWall { is_up_side } => {
                 // Check if the ant has gone into the background
                 if ant_transform.translation.z <= 0.01 {
-                    ant.position_kind = AntPositionKind::Background;
-                    ant_transform.translation.z = 0.;
+                    // Offset from the wall
                     ant_transform.translation.y += if is_up_side { -0.02 } else { 0.02 };
+                    place_ant_on_background(&mut ant, &mut ant_transform);
                 }
                 // Check the closest colliding wall
                 else if let Some((nav_node_entity, nav_node, wall_transform_global)) =
@@ -205,7 +213,7 @@ pub fn update_ant_position_kinds(
                     let (wall_entity, _wall_node, wall_transform_global) = {
                         let NavNode::HorizontalEdge { left, right, .. } = current_wall.1 else {
                             dbg!(current_wall);
-                            panic!();
+                            panic!(); // FIXME
                         };
                         let neighbor = if new_wall_is_left_side { right } else { left };
                         nav_nodes.get(*neighbor).unwrap()
@@ -224,9 +232,8 @@ pub fn update_ant_position_kinds(
             AntPositionKind::VerticalWall { is_left_side } => {
                 // Check if the ant has gone into the background
                 if ant_transform.translation.z <= 0.01 {
-                    ant.position_kind = AntPositionKind::Background;
-                    ant_transform.translation.z = 0.;
                     ant_transform.translation.x += if is_left_side { 0.02 } else { -0.02 };
+                    place_ant_on_background(&mut ant, &mut ant_transform);
                 }
                 // Check the closest colliding wall
                 else if let Some((nav_node_entity, nav_node, wall_transform_global)) =
@@ -292,10 +299,34 @@ pub fn update_ant_position_kinds(
     }
 }
 
+pub fn assert_ants(ants: Query<(Entity, &Ant, &GlobalTransform)>, nav_nodes: Query<&NavNode>) {
+    let mut all_ok = true;
+    for (entity, ant, ant_transform_global) in ants.iter() {
+        let current_nav_node = nav_nodes.get(ant.current_wall.0).unwrap();
+        let ok = match ant.position_kind {
+            AntPositionKind::Background => matches!(current_nav_node, NavNode::Background { .. }),
+            AntPositionKind::VerticalWall { .. } => {
+                matches!(current_nav_node, NavNode::VerticalEdge { .. })
+            }
+            AntPositionKind::HorizontalWall { .. } => {
+                matches!(current_nav_node, NavNode::HorizontalEdge { .. })
+            }
+        };
+        if !ok {
+            all_ok = false;
+            error!("Entity has incorrect current wall assigned");
+            dbg!((entity, ant, ant_transform_global, current_nav_node));
+        }
+    }
+    if !all_ok {
+        panic!("assert_ants failed");
+    }
+}
+
 /// Calculate desired direction of ants according to the navigation mesh
 pub fn update_ant_direction() {}
 
-// Move ants according to their direction and the constraints of [AntPositionKind]
+/// Move ants according to their direction and the constraints of [AntPositionKind]
 pub fn update_ant_position(mut ants: Query<(&Ant, &mut Transform)>, time: Res<Time>) {
     let dt = time.delta_seconds();
     for (ant, mut ant_transform) in ants.iter_mut() {
@@ -393,6 +424,12 @@ fn place_ant_on_vertical_wall(
     if ant_transform.translation.z < 0.01 {
         ant_transform.translation.z = 0.01;
     }
+}
+
+fn place_ant_on_background(ant: &mut Ant, ant_transform: &mut Transform) {
+    ant.position_kind = AntPositionKind::Background;
+    ant_transform.translation.z = 0.;
+    // TODO: place away from walls?
 }
 
 pub fn debug_ants(ants: Query<(&Ant, &GlobalTransform)>, mut gizmos: Gizmos) {

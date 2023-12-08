@@ -20,14 +20,60 @@ bevy = "0.12.1"
 bevy-inspector-egui = "0.21.0"
 bevy_ecs_ldtk = "0.8.0"
 bevy_ecs_tilemap = "0.12"
+bevy_egui = "0.23.0"
 bevy_framepace = "0.14.1"
 bevy_rapier2d = { version = "0.23.0", features = ["wasm-bindgen"] }
+bytemuck = "1.14.0"
 itertools = "0.12.0"
 rand = "0.8.5"
 
 [patch.crates-io]
 bevy_ecs_ldtk = { git = "https://github.com/trouv/bevy_ecs_ldtk", branch = "feat/bevy-0.12" }
 bevy_ecs_tilemap = { git = "https://github.com/divark/bevy_ecs_tilemap", branch = "0.12-fixes" }
+
+bevy = { path = "../bevy" }
+# Some deps directly depend on sub-crates, so we need to patch them all
+# ls ../bevy/crates | sed 's/bevy_\(.*\)/bevy_\1\ = { path = \"..\/bevy\/crates\/bevy_\1\" }/' -
+bevy_a11y = { path = "../bevy/crates/bevy_a11y" }
+bevy_animation = { path = "../bevy/crates/bevy_animation" }
+bevy_app = { path = "../bevy/crates/bevy_app" }
+bevy_asset = { path = "../bevy/crates/bevy_asset" }
+bevy_audio = { path = "../bevy/crates/bevy_audio" }
+bevy_core = { path = "../bevy/crates/bevy_core" }
+bevy_core_pipeline = { path = "../bevy/crates/bevy_core_pipeline" }
+bevy_derive = { path = "../bevy/crates/bevy_derive" }
+bevy_diagnostic = { path = "../bevy/crates/bevy_diagnostic" }
+# bevy_dylib = { path = "../bevy/crates/bevy_dylib" }
+# bevy_dynamic_plugin = { path = "../bevy/crates/bevy_dynamic_plugin" }
+bevy_ecs = { path = "../bevy/crates/bevy_ecs" }
+# bevy_ecs_compile_fail_tests = { path = "../bevy/crates/bevy_ecs_compile_fail_tests" }
+bevy_encase_derive = { path = "../bevy/crates/bevy_encase_derive" }
+bevy_gilrs = { path = "../bevy/crates/bevy_gilrs" }
+bevy_gizmos = { path = "../bevy/crates/bevy_gizmos" }
+bevy_gltf = { path = "../bevy/crates/bevy_gltf" }
+bevy_hierarchy = { path = "../bevy/crates/bevy_hierarchy" }
+bevy_input = { path = "../bevy/crates/bevy_input" }
+bevy_internal = { path = "../bevy/crates/bevy_internal" }
+bevy_log = { path = "../bevy/crates/bevy_log" }
+# bevy_macros_compile_fail_tests = { path = "../bevy/crates/bevy_macros_compile_fail_tests" }
+bevy_macro_utils = { path = "../bevy/crates/bevy_macro_utils" }
+bevy_math = { path = "../bevy/crates/bevy_math" }
+bevy_mikktspace = { path = "../bevy/crates/bevy_mikktspace" }
+bevy_pbr = { path = "../bevy/crates/bevy_pbr" }
+bevy_ptr = { path = "../bevy/crates/bevy_ptr" }
+bevy_reflect = { path = "../bevy/crates/bevy_reflect" }
+# bevy_reflect_compile_fail_tests = { path = "../bevy/crates/bevy_reflect_compile_fail_tests" }
+bevy_render = { path = "../bevy/crates/bevy_render" }
+bevy_scene = { path = "../bevy/crates/bevy_scene" }
+bevy_sprite = { path = "../bevy/crates/bevy_sprite" }
+bevy_tasks = { path = "../bevy/crates/bevy_tasks" }
+bevy_text = { path = "../bevy/crates/bevy_text" }
+bevy_time = { path = "../bevy/crates/bevy_time" }
+bevy_transform = { path = "../bevy/crates/bevy_transform" }
+bevy_ui = { path = "../bevy/crates/bevy_ui" }
+bevy_utils = { path = "../bevy/crates/bevy_utils" }
+bevy_window = { path = "../bevy/crates/bevy_window" }
+bevy_winit = { path = "../bevy/crates/bevy_winit" }
 
 [target.'cfg(not(target_family = "wasm"))'.dependencies]
 bevy = { version = "0.12.1", features = ["file_watcher", "dynamic_linking"] } 

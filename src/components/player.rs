@@ -1,13 +1,12 @@
 use std::f32::consts::PI;
 
-use bevy::{prelude::*, render::view::RenderLayers, transform::commands, utils::HashSet};
+use bevy::{prelude::*, render::view::RenderLayers, utils::HashSet};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::{
     COLLISION_GROUP_ANTS, COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER,
     COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, PLAYER_SIZE, RENDERLAYER_PLAYER,
-    TILE_SIZE,
 };
 
 use super::{
@@ -65,12 +64,12 @@ impl Default for PlayerBundle {
 pub fn update_player_sensor(
     mut commands: Commands,
     player_sensors: Query<(&PlayerWallSensor, &CollidingEntities)>,
-    mut players: Query<(&mut Player, &GlobalTransform)>,
+    mut players: Query<&mut Player>,
     nav_nodes: Query<&NavNode>,
-    ants: Query<(&Ant, &Transform, &GlobalTransform, &Parent)>,
+    ants: Query<(&Ant, &Transform, &Parent)>,
 ) {
     for (sensor, colliding_entities) in player_sensors.iter() {
-        let Ok((mut player, player_transform_global)) = players.get_mut(sensor.player) else {
+        let Ok(mut player) = players.get_mut(sensor.player) else {
             warn!("Unattached player sensor");
             continue;
         };
@@ -80,21 +79,11 @@ pub fn update_player_sensor(
         player.on_ground.clear();
         player.on_wall.clear();
         for colliding_entity in colliding_entities.iter() {
-            if let Ok((ant, ant_transform, ant_transform_global, ant_parent)) =
-                ants.get(colliding_entity)
-            {
+            if let Ok((ant, ant_transform, ant_parent)) = ants.get(colliding_entity) {
                 if !matches!(ant.position_kind, AntPositionKind::Background) {
-                    // Spawn a dead ant outside of the player's collider
-                    // let offset = (ant_transform_global.translation().xy()
-                    //     - player_transform_global.translation().xy())
-                    // .normalize()
-                    //     * TILE_SIZE
-                    //     * 0.1;
-                    let mut transform = *ant_transform;
-                    // transform.translation.x += offset.x;
-                    // transform.translation.y += offset.y; // This caused ants to go though walls, I reduced the dead ants' size instead
+                    // Spawn a dead ant
                     commands
-                        .spawn(DeadAntBundle::new(transform))
+                        .spawn(DeadAntBundle::new(*ant_transform))
                         .set_parent(ant_parent.get());
                     // Despawn the alive ant
                     commands

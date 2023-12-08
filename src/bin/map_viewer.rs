@@ -1,7 +1,7 @@
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
-    render::{camera, view::RenderLayers},
+    render::view::RenderLayers,
     window::PrimaryWindow,
 };
 use bevy_ecs_ldtk::prelude::*;
@@ -134,11 +134,14 @@ fn spawn_ants_on_navmesh(
             rng.gen::<f32>() - 0.5,
         )
         .normalize();
+        // let scale = rng.gen::<f32>() + 0.5;
+        let scale = 1.; // TODO
         let speed = 40.;
         AntBundle::spawn_on_nav_node(
             &mut commands,
             direction,
             speed,
+            scale,
             nav_node_entity,
             nav_node,
             nav_node_pos,

@@ -1,5 +1,6 @@
 pub mod components;
 pub mod helpers;
+pub mod render;
 
 use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers};
 use bevy_ecs_ldtk::{prelude::*, systems::process_ldtk_levels};
@@ -31,6 +32,7 @@ impl Plugin for GamePlugin {
                     spawn_player_sensor,
                     (
                         update_ant_position_kinds,
+                        assert_ants, // TODO: disable in release?
                         update_ant_direction,
                         update_ant_position,
                     )
