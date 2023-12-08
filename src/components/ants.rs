@@ -6,8 +6,8 @@ use crate::{
     render::render_ant::{
         AntMaterial, AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D,
     },
-    ANT_SIZE, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS,
-    RENDERLAYER_ANTS, TILE_SIZE, WALL_Z_FACTOR,
+    ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER_SENSOR,
+    COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE, WALL_Z_FACTOR,
 };
 
 use super::nav_mesh::{NavMeshLUT, NavNode};
@@ -59,7 +59,7 @@ impl AntBundle {
             NavNode::VerticalEdge { is_left_side, .. } => {
                 transform.translation.z = TILE_SIZE * WALL_Z_FACTOR;
                 transform.translation.x +=
-                    (ANT_SIZE.x / 2. - 0.01) * if *is_left_side { 1. } else { -1. };
+                    (ANT_SIZE.x / 2. - ANT_WALL_CLIPPING) * if *is_left_side { 1. } else { -1. };
                 AntPositionKind::VerticalWall {
                     is_left_side: *is_left_side,
                 }
@@ -67,7 +67,7 @@ impl AntBundle {
             NavNode::HorizontalEdge { is_up_side, .. } => {
                 transform.translation.z = TILE_SIZE * WALL_Z_FACTOR;
                 transform.translation.y +=
-                    (ANT_SIZE.y / 2. - 0.01) * if *is_up_side { -1. } else { 1. };
+                    (ANT_SIZE.y / 2. - ANT_WALL_CLIPPING) * if *is_up_side { -1. } else { 1. };
                 AntPositionKind::HorizontalWall {
                     is_up_side: *is_up_side,
                 }
@@ -192,9 +192,14 @@ pub fn update_ant_position_kinds(
             }
             AntPositionKind::HorizontalWall { is_up_side } => {
                 // Check if the ant has gone into the background
-                if ant_transform.translation.z <= 0.01 {
+                if ant_transform.translation.z <= ANT_WALL_CLIPPING {
                     // Offset from the wall
-                    ant_transform.translation.y += if is_up_side { -0.02 } else { 0.02 };
+                    // TODO: offset from all colliding walls?
+                    ant_transform.translation.y += if is_up_side {
+                        -2. * ANT_WALL_CLIPPING
+                    } else {
+                        2. * ANT_WALL_CLIPPING
+                    };
                     place_ant_on_background(&mut ant, &mut ant_transform);
                 }
                 // Check the closest colliding wall
@@ -226,7 +231,7 @@ pub fn update_ant_position_kinds(
                     let new_wall_is_left_side = ant.direction.x > 0.;
 
                     let current_wall = nav_nodes.get(ant.current_wall.0).unwrap();
-                    let (wall_entity, _wall_node, wall_transform_global) = {
+                    let (wall_entity, wall_node, wall_transform_global) = {
                         let NavNode::HorizontalEdge { left, right, .. } = current_wall.1 else {
                             dbg!(current_wall);
                             panic!(); // FIXME
@@ -234,21 +239,40 @@ pub fn update_ant_position_kinds(
                         let neighbor = if new_wall_is_left_side { right } else { left };
                         nav_nodes.get(*neighbor).unwrap()
                     };
-                    let wall_transform_relative =
-                        wall_transform_global.reparented_to(ant_transform_global);
-                    place_ant_on_vertical_wall(
-                        new_wall_is_left_side,
-                        &mut ant,
-                        &mut ant_transform,
-                        &wall_transform_relative,
-                    );
-                    ant.current_wall = (wall_entity, *wall_transform_global);
+                    if !matches!(wall_node, NavNode::VerticalEdge { is_left_side, .. } if *is_left_side == new_wall_is_left_side)
+                    {
+                        dbg!((
+                            *ant,
+                            *ant_transform_global,
+                            current_wall,
+                            wall_entity,
+                            wall_node,
+                            wall_transform_global
+                        ));
+                        // A collision was missed, try to fix it
+                        assert!(matches!(wall_node, NavNode::HorizontalEdge { .. }));
+                        ant.current_wall = (wall_entity, *wall_transform_global);
+                    } else {
+                        let wall_transform_relative =
+                            wall_transform_global.reparented_to(ant_transform_global);
+                        place_ant_on_vertical_wall(
+                            new_wall_is_left_side,
+                            &mut ant,
+                            &mut ant_transform,
+                            &wall_transform_relative,
+                        );
+                        ant.current_wall = (wall_entity, *wall_transform_global);
+                    }
                 }
             }
             AntPositionKind::VerticalWall { is_left_side } => {
                 // Check if the ant has gone into the background
-                if ant_transform.translation.z <= 0.01 {
-                    ant_transform.translation.x += if is_left_side { 0.02 } else { -0.02 };
+                if ant_transform.translation.z <= ANT_WALL_CLIPPING {
+                    ant_transform.translation.x += if is_left_side {
+                        2. * ANT_WALL_CLIPPING
+                    } else {
+                        -2. * ANT_WALL_CLIPPING
+                    };
                     place_ant_on_background(&mut ant, &mut ant_transform);
                 }
                 // Check the closest colliding wall
@@ -280,7 +304,7 @@ pub fn update_ant_position_kinds(
                     let new_wall_is_up_side = ant.direction.y < 0.;
 
                     let current_wall = nav_nodes.get(ant.current_wall.0).unwrap();
-                    let (wall_entity, _wall_node, wall_transform_global) = {
+                    let (wall_entity, wall_node, wall_transform_global) = {
                         let NavNode::VerticalEdge { up, down, .. } = current_wall.1 else {
                             dbg!(current_wall);
                             panic!(); // FIXME: triggers if spawning ants too early?
@@ -288,15 +312,30 @@ pub fn update_ant_position_kinds(
                         let neighbor = if new_wall_is_up_side { down } else { up };
                         nav_nodes.get(*neighbor).unwrap()
                     };
-                    let wall_transform_relative =
-                        wall_transform_global.reparented_to(ant_transform_global);
-                    place_ant_on_horizontal_wall(
-                        new_wall_is_up_side,
-                        &mut ant,
-                        &mut ant_transform,
-                        &wall_transform_relative,
-                    );
-                    ant.current_wall = (wall_entity, *wall_transform_global);
+                    if !matches!(wall_node, NavNode::HorizontalEdge{ is_up_side, .. } if *is_up_side == new_wall_is_up_side)
+                    {
+                        dbg!((
+                            *ant,
+                            *ant_transform_global,
+                            current_wall,
+                            wall_entity,
+                            wall_node,
+                            wall_transform_global
+                        ));
+                        // A collision was missed, try to fix it
+                        assert!(matches!(wall_node, NavNode::VerticalEdge { .. }));
+                        ant.current_wall = (wall_entity, *wall_transform_global);
+                    } else {
+                        let wall_transform_relative =
+                            wall_transform_global.reparented_to(ant_transform_global);
+                        place_ant_on_horizontal_wall(
+                            new_wall_is_up_side,
+                            &mut ant,
+                            &mut ant_transform,
+                            &wall_transform_relative,
+                        );
+                        ant.current_wall = (wall_entity, *wall_transform_global);
+                    }
                 }
             }
         }
@@ -307,10 +346,10 @@ pub fn update_ant_position_kinds(
             else {
                 continue;
             };
-            let background_entity_transform = *nav_nodes
-                .get_component::<GlobalTransform>(background_entity)
-                .unwrap();
-            ant.current_wall = (background_entity, background_entity_transform);
+            let (_, nav_node, background_entity_transform) =
+                nav_nodes.get(background_entity).unwrap();
+            assert!(matches!(nav_node, NavNode::Background { .. }));
+            ant.current_wall = (background_entity, *background_entity_transform);
         }
         // Update material
         *ant_material = match ant.position_kind {
@@ -322,7 +361,12 @@ pub fn update_ant_position_kinds(
     }
 }
 
-pub fn assert_ants(ants: Query<(Entity, &Ant, &GlobalTransform)>, nav_nodes: Query<&NavNode>) {
+pub fn assert_ants(
+    ants: Query<(Entity, &Ant, &GlobalTransform)>,
+    nav_nodes: Query<&NavNode>,
+    // mut time: ResMut<Time<Virtual>>,
+    mut commands: Commands,
+) {
     let mut all_ok = true;
     for (entity, ant, ant_transform_global) in ants.iter() {
         let current_nav_node = nav_nodes.get(ant.current_wall.0).unwrap();
@@ -339,10 +383,11 @@ pub fn assert_ants(ants: Query<(Entity, &Ant, &GlobalTransform)>, nav_nodes: Que
             all_ok = false;
             error!("Entity has incorrect current wall assigned");
             dbg!((entity, ant, ant_transform_global, current_nav_node));
+            commands.entity(entity).despawn(); // FIXME: parent?
         }
     }
     if !all_ok {
-        panic!("assert_ants failed");
+        // time.pause();
     }
 }
 
@@ -368,7 +413,7 @@ pub fn update_ant_direction_randomly(mut ants: Query<&mut Ant>, time: Res<Time>)
 pub fn update_ant_position(mut ants: Query<(&Ant, &mut Transform)>, time: Res<Time>) {
     let dt = time.delta_seconds();
     for (ant, mut ant_transform) in ants.iter_mut() {
-        let dt = dt.min(TILE_SIZE / 2. / ant.speed); // Clamp to avoid going through walls when lagging
+        let dt = dt.min(TILE_SIZE / 4. / ant.speed); // Clamp to avoid going through walls when lagging
         match ant.position_kind {
             AntPositionKind::Background => {
                 let delta_xy = ant.direction.xy().normalize_or_zero() * ant.speed * dt;
@@ -442,10 +487,10 @@ fn place_ant_on_horizontal_wall(
     // Change position kind
     ant.position_kind = AntPositionKind::HorizontalWall { is_up_side };
     // Re-place ant on the wall
-    let offset = (ANT_SIZE.y / 2. - 0.01) * if is_up_side { -1. } else { 1. };
+    let offset = (ANT_SIZE.y / 2. - ANT_WALL_CLIPPING) * if is_up_side { -1. } else { 1. };
     ant_transform.translation.y += wall_transform_relative.translation.y + offset;
-    if ant_transform.translation.z < 0.01 {
-        ant_transform.translation.z = 0.01;
+    if ant_transform.translation.z < ANT_WALL_CLIPPING {
+        ant_transform.translation.z = ANT_WALL_CLIPPING;
     }
 }
 
@@ -458,10 +503,10 @@ fn place_ant_on_vertical_wall(
     // Change position kind
     ant.position_kind = AntPositionKind::VerticalWall { is_left_side };
     // Re-place ant on the wall
-    let offset = (ANT_SIZE.x / 2. - 0.01) * if is_left_side { 1. } else { -1. };
+    let offset = (ANT_SIZE.x / 2. - ANT_WALL_CLIPPING) * if is_left_side { 1. } else { -1. };
     ant_transform.translation.x += wall_transform_relative.translation.x + offset;
-    if ant_transform.translation.z < 0.01 {
-        ant_transform.translation.z = 0.01;
+    if ant_transform.translation.z < ANT_WALL_CLIPPING {
+        ant_transform.translation.z = ANT_WALL_CLIPPING;
     }
 }
 

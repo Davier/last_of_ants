@@ -57,6 +57,8 @@ pub const PLAYER_SIZE: Vec2 = Vec2::new(8., 16.);
 pub const ANT_SIZE: Vec2 = Vec2::new(16., 16.);
 /// Vertical and horizontal edges will have their [NavNode] placed at `tile_size * WALL_Z_FACTOR / 2.` in Z
 pub const WALL_Z_FACTOR: f32 = 1.;
+/// Number of pixels the ants should be clipping in a wall when moving on it
+pub const ANT_WALL_CLIPPING: f32 = 0.5;
 
 pub const TILE_INT_GROUND: i32 = 1;
 pub const TILE_INT_EMPTY: i32 = 2;
