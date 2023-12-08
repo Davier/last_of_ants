@@ -14,7 +14,10 @@ use last_of_ants::{
     components::{
         ants::{debug_ants, Ant, AntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
-        pheromon::{Gradient, Pheromons, PheromonsBuffer, N_PH, PH1, PH2, init_pheromons, pheromon_diffusion, update_gradient},
+        pheromon::{
+            compute_gradients, diffuse_pheromons, PheromonGradients, PheromonSource, Pheromons,
+            PH1, PH2,
+        },
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     GamePlugin,
@@ -33,6 +36,7 @@ fn main() {
         .add_systems(
             Update,
             (
+                debug_sources,
                 spawn_ants_on_navmesh.run_if(on_key_just_pressed(KeyCode::Space)),
                 // move_ants_on_mesh,
                 debug_nav_mesh.run_if(toggle_on_key(KeyCode::N)),
@@ -40,8 +44,8 @@ fn main() {
                 toggle_physics_debug.run_if(on_key_just_pressed(KeyCode::P)),
                 camera_movement,
                 debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
-                pheromon_diffusion.run_if(toggle_on_key(KeyCode::H)),
-                update_gradient.after(pheromon_diffusion),
+                diffuse_pheromons.run_if(toggle_on_key(KeyCode::H)),
+                compute_gradients.after(diffuse_pheromons),
                 update_text_counters,
             ),
         )
@@ -80,6 +84,12 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             TextSection::default(), // Ant counter
         ]))
         .insert(TextCounters);
+}
+
+fn debug_sources(sources: Query<&PheromonSource, Added<PheromonSource>>) {
+    for source in sources.iter() {
+        debug!("{:?}", source);
+    }
 }
 
 #[derive(Debug, Component)]
@@ -211,7 +221,7 @@ fn camera_movement(
 }
 
 fn debug_pheromons(
-    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &Gradient)>,
+    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonGradients)>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
     mut gizmos: Gizmos,
 
@@ -242,20 +252,24 @@ fn debug_pheromons(
         let closest = &mut distances[0];
 
         gizmos.circle_2d(closest.1, 0.5, Color::RED);
-        gizmos.ray_2d(cursor_world_position, closest.4 .0[PH1], Color::ALICE_BLUE);
+        gizmos.ray_2d(
+            cursor_world_position,
+            closest.4.gradients[PH1],
+            Color::ALICE_BLUE,
+        );
 
         if buttons.pressed(MouseButton::Left) {
-            closest.3 .0[PH1] += 1.;
+            closest.3.pheromons[PH1] += 1.;
         } else if buttons.pressed(MouseButton::Right) {
-            closest.3 .0[PH2] += 1.;
+            closest.3.pheromons[PH2] += 1.;
         }
     }
 
     for (e, n, ph, g) in query_nodes.iter() {
         let t = query_transform.get(e).unwrap();
-        gizmos.circle_2d(t.translation().xy(), ph.0[PH1], Color::PINK);
-        gizmos.ray_2d(t.translation().xy(), g.0[PH1] * 2.0, Color::BLUE);
-        gizmos.circle_2d(t.translation().xy(), ph.0[PH2], Color::YELLOW_GREEN);
-        gizmos.ray_2d(t.translation().xy(), g.0[PH2] * 2.0, Color::YELLOW);
+        gizmos.circle_2d(t.translation().xy(), ph.pheromons[PH1], Color::PINK);
+        gizmos.ray_2d(t.translation().xy(), g.gradients[PH1] * 2.0, Color::BLUE);
+        gizmos.circle_2d(t.translation().xy(), ph.pheromons[PH2], Color::YELLOW_GREEN);
+        gizmos.ray_2d(t.translation().xy(), g.gradients[PH2] * 2.0, Color::YELLOW);
     }
 }

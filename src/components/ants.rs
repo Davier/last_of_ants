@@ -14,7 +14,10 @@ use crate::{
     COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE, WALL_Z_FACTOR,
 };
 
-use super::{nav_mesh::{NavMeshLUT, NavNode}, pheromon::{PH1, Pheromons, Gradient}};
+use super::{
+    nav_mesh::{NavMeshLUT, NavNode},
+    pheromon::{PheromonGradients, Pheromons, PH1},
+};
 
 #[derive(Bundle)]
 pub struct AntBundle {
@@ -400,48 +403,25 @@ pub fn assert_ants(
 }
 
 /// Calculate desired direction of ants according to the navigation mesh
-pub fn update_ant_direction(
-    mut ants_query: Query<(Entity, &mut Ant)>,
-    mut nodes_query: Query<(Entity, &NavNode, &mut Pheromons, &Gradient)>,
-    transforms_query: Query<&GlobalTransform>,
-) {
+pub fn update_ant_direction(mut ants: Query<&mut Ant>, gradients: Query<&PheromonGradients>) {
     let mut rng = rand::thread_rng();
 
-    for (id, mut ant) in ants_query.iter_mut() {
-        // FIXME SLOW
-        let mut distances = nodes_query
-            .iter_mut()
-            .map(|(id_n, node, ph, gd)| {
-                let pos = transforms_query.get(id_n).unwrap().translation().xy();
-                (
-                    id_n,
-                    node,
-                    ph,
-                    gd,
-                    pos.distance(transforms_query.get(id).unwrap().translation().xy()),
-                )
-            })
-            .collect_vec();
-        distances.sort_by(|a, b| a.4.partial_cmp(&b.4).unwrap());
-        let closest = &mut distances[0];
-
-        //let closest = nodes_query.get(ant.current_wall.0).unwrap();
+    for mut ant in ants.iter_mut() {
+        let closest_gradient = gradients.get(ant.current_wall.0).unwrap();
 
         // the gradient for the pheromon the ant follows is not null: follow it
-        let goal_gradient = closest.3 .0[ant.goal].extend(0.);
+        let goal_gradient = closest_gradient.gradients[ant.goal].extend(0.);
         if goal_gradient != Vec3::ZERO {
             ant.direction = goal_gradient;
         } else {
             let random = rng.gen_range(0.0..1.0);
-            let direction_change = if 0.01 > random{
-                rng.gen_range(-(PI/2.)..(PI/2.))
+            if 0.01 > random {
+                ant.direction =
+                    Quat::from_rotation_z(rng.gen_range(-(PI / 2.)..(PI / 2.))) * ant.direction;
             } else if 0.1 > random {
-                rng.gen_range(-(PI/6.)..(PI/6.))
-            } else {
-                0.
-            };
-            
-                ant.direction = Quat::from_rotation_z(direction_change) * ant.direction;
+                ant.direction =
+                    Quat::from_rotation_z(rng.gen_range(-(PI / 6.)..(PI / 6.))) * ant.direction;
+            }
         }
     }
 }
