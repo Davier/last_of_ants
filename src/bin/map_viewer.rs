@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
@@ -231,7 +233,7 @@ fn pheromon_diffusion(
     for i in 0..N_PH {
         for (_, node, ph) in query_nodes.iter() {
             let diffused = ph.0[i] * diffusion_rate;
-            if diffused > 0.005 {
+            if diffused > 0.005 { // TODO extract quantity
                 let neighbors = node.neighbors();
                 let diffused_per_neighbor = diffused / neighbors.len() as f32;
 
@@ -245,7 +247,12 @@ fn pheromon_diffusion(
         // Apply diffusion
         for (id, _, mut ph) in query_nodes.iter_mut() {
             let mut ph_b = query_pheromon_buffers.get_mut(id).unwrap();
-            ph.0[i] = ph.0[i] * (1.0 - diffusion_rate) + ph_b.0[i];
+            let new_pheromon_quantity = ph.0[i] * (1.0 - diffusion_rate) + ph_b.0[i];
+            if new_pheromon_quantity > 0.001{ // TODO extract quantity
+                ph.0[i] = new_pheromon_quantity;
+            } else {
+                ph.0[i] = 0.;
+            }
             ph_b.0[i] = 0.;
         }
     }
@@ -297,7 +304,9 @@ fn update_gradient(
             if ph.0[i] >= n.max(s).max(e).max(w) {
                 gd.0[i] = Vec2::ZERO;
             } else {
-                gd.0[i] = n * vn + s * vs + e * ve + w * vw;
+                // FIXME cleanup
+                let new_gradient  =n * vn + s * vs + e * ve + w * vw;
+                    gd.0[i] = new_gradient;
             }
         }
     }
@@ -338,9 +347,9 @@ fn debug_pheromons(
         gizmos.ray_2d(cursor_world_position, closest.4 .0[PH1], Color::ALICE_BLUE);
 
         if buttons.pressed(MouseButton::Left) {
-            closest.3.0[PH1] += 1.;
+            closest.3 .0[PH1] += 1.;
         } else if buttons.pressed(MouseButton::Right) {
-            closest.3.0[PH2] += 1.;
+            closest.3 .0[PH2] += 1.;
         }
     }
 

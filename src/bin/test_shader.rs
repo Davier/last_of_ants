@@ -90,6 +90,7 @@ fn setup(
                 scale,
                 color: Color::WHITE,
                 animation_phase: rng.gen::<f32>() * 2. * PI,
+                goal: 0,
             },
         ));
     }

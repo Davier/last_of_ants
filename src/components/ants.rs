@@ -4,6 +4,8 @@ use bevy::{ecs::system::EntityCommands, prelude::*, render::view::RenderLayers};
 use bevy_rapier2d::prelude::*;
 use rand::{Rng, random};
 
+use itertools::Itertools;
+
 use crate::{
     render::render_ant::{
         AntMaterial, AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D,
@@ -12,7 +14,7 @@ use crate::{
     COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE, WALL_Z_FACTOR,
 };
 
-use super::nav_mesh::{NavMeshLUT, NavNode};
+use super::{nav_mesh::{NavMeshLUT, NavNode}, pheromon::{PH1, Pheromons, Gradient}};
 
 #[derive(Bundle)]
 pub struct AntBundle {
@@ -37,6 +39,7 @@ pub struct Ant {
     pub direction: Vec3,
     pub current_wall: (Entity, GlobalTransform), // FIXME: use relative transforms
     pub animation_phase: f32,
+    pub goal: usize, // TODO turn into enum
 }
 
 impl AntBundle {
@@ -96,6 +99,7 @@ impl AntBundle {
                 current_wall,
                 color,
                 animation_phase: random::<f32>() * 2. * PI, // FIXME: use thread rng
+                goal: PH1,
             },
             material,
             collider: Collider::cuboid(ANT_SIZE.x / 2., ANT_SIZE.y / 2.),
@@ -396,7 +400,49 @@ pub fn assert_ants(
 }
 
 /// Calculate desired direction of ants according to the navigation mesh
-pub fn update_ant_direction() {}
+pub fn update_ant_direction(
+    mut ants_query: Query<(Entity, &mut Ant)>,
+    mut nodes_query: Query<(Entity, &NavNode, &mut Pheromons, &Gradient)>,
+    transforms_query: Query<&GlobalTransform>,
+) {
+    let mut rng = rand::thread_rng();
+
+    for (id, mut ant) in ants_query.iter_mut() {
+        // FIXME SLOW
+        let mut distances = nodes_query
+            .iter_mut()
+            .map(|(id_n, node, ph, gd)| {
+                let pos = transforms_query.get(id_n).unwrap().translation().xy();
+                (
+                    id_n,
+                    node,
+                    ph,
+                    gd,
+                    pos.distance(transforms_query.get(id).unwrap().translation().xy()),
+                )
+            })
+            .collect_vec();
+        distances.sort_by(|a, b| a.4.partial_cmp(&b.4).unwrap());
+        let closest = &mut distances[0];
+
+        // the gradient for the pheromon the ant follows is not null: follow it
+        let goal_gradient = closest.3 .0[ant.goal].extend(0.);
+        if goal_gradient != Vec3::ZERO {
+            ant.direction = goal_gradient;
+        } else {
+            let random = rng.gen_range(0.0..1.0);
+            let direction_change = if 0.01 > random{
+                rng.gen_range(-(PI/2.)..(PI/2.))
+            } else if 0.1 > random {
+                rng.gen_range(-(PI/6.)..(PI/6.))
+            } else {
+                0.
+            };
+            
+                ant.direction = Quat::from_rotation_z(direction_change) * ant.direction;
+        }
+    }
+}
 
 pub fn update_ant_direction_randomly(mut ants: Query<&mut Ant>, time: Res<Time>) {
     let mut rng = rand::thread_rng();
