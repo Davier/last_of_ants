@@ -21,7 +21,7 @@ fn main() {
             AntMaterialPlugin,
             FrameTimeDiagnosticsPlugin,
             // LogDiagnosticsPlugin::default(),
-            // RenderWorldInspectorPlugin::default(),
+            // last_of_ants::helpers::render_world_inspector::RenderWorldInspectorPlugin::default(),
             // WorldInspectorPlugin::default(),
         ))
         .add_systems(Startup, setup)
@@ -49,15 +49,9 @@ fn setup(
         .into();
     let material_side: Handle<AntMaterial> = materials.add(AntMaterial { is_side: 1 });
     let material_top: Handle<AntMaterial> = materials.add(AntMaterial { is_side: 0 });
-    // commands.spawn(MaterialMesh2dBundle {
-    //     mesh: mesh.clone(),
-    //     transform: Transform::from_xyz(0., 0., 0.).with_scale(Vec3::new(128., 128., 128.)),
-    //     material: material_top.clone(),
-    //     ..default()
-    // });
     for _ in 0..100 {
         let angle = rng.gen::<f32>() * 2. * PI;
-        let direction = dbg!(Vec3::new(angle.cos(), angle.sin(), 0.));
+        let direction = Vec3::new(angle.cos(), angle.sin(), 0.);
         let is_side = rng.gen_bool(0.5);
         let scale = rng.gen::<f32>() + 0.5;
         let mut transform = Transform::from_xyz(
@@ -94,6 +88,7 @@ fn setup(
                 direction,
                 current_wall: (Entity::PLACEHOLDER, GlobalTransform::default()),
                 scale,
+                color: Color::WHITE,
             },
         ));
     }

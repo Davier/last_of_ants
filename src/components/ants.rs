@@ -1,7 +1,11 @@
 use bevy::{ecs::system::EntityCommands, prelude::*, render::view::RenderLayers};
 use bevy_rapier2d::prelude::*;
+use rand::Rng;
 
 use crate::{
+    render::render_ant::{
+        AntMaterial, AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D,
+    },
     ANT_SIZE, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS,
     RENDERLAYER_ANTS, TILE_SIZE, WALL_Z_FACTOR,
 };
@@ -11,7 +15,7 @@ use super::nav_mesh::{NavMeshLUT, NavNode};
 #[derive(Bundle)]
 pub struct AntBundle {
     pub ant: Ant,
-    pub sprite: SpriteBundle,
+    pub material: AntMaterialBundle,
     pub collider: Collider,
     pub sensor: Sensor,
     pub active_events: ActiveEvents,
@@ -27,6 +31,7 @@ pub struct Ant {
     pub speed: f32,
     /// TODO: Scaled is only used for rendering for now
     pub scale: f32,
+    pub color: Color,
     pub direction: Vec3,
     pub current_wall: (Entity, GlobalTransform), // FIXME: use relative transforms
 }
@@ -36,6 +41,7 @@ impl AntBundle {
         direction: Vec3,
         speed: f32,
         scale: f32,
+        color: Color,
         nav_node_entity: Entity,
         nav_node: &NavNode,
         nav_node_pos: &GlobalTransform,
@@ -43,9 +49,11 @@ impl AntBundle {
     ) -> Self {
         // FIXME: use common fn to place on walls?
         let mut transform = nav_node_pos.reparented_to(entities_holder_pos);
+        let mut is_side = true;
         let position_kind = match nav_node {
             NavNode::Background { .. } => {
                 transform.translation.z = 0.;
+                is_side = false;
                 AntPositionKind::Background
             }
             NavNode::VerticalEdge { is_left_side, .. } => {
@@ -66,6 +74,16 @@ impl AntBundle {
             }
         };
         let current_wall = (nav_node_entity, *nav_node_pos);
+        let material = AntMaterialBundle {
+            mesh: ANT_MESH2D,
+            material: if is_side {
+                ANT_MATERIAL_SIDE
+            } else {
+                ANT_MATERIAL_TOP
+            },
+            transform,
+            ..default()
+        };
         Self {
             ant: Ant {
                 position_kind,
@@ -73,16 +91,9 @@ impl AntBundle {
                 scale,
                 direction,
                 current_wall,
+                color,
             },
-            sprite: SpriteBundle {
-                sprite: Sprite {
-                    color: Color::BLACK,
-                    custom_size: Some(ANT_SIZE),
-                    ..default()
-                },
-                transform,
-                ..default()
-            },
+            material,
             collider: Collider::cuboid(ANT_SIZE.x / 2., ANT_SIZE.y / 2.),
             sensor: Sensor,
             active_events: ActiveEvents::COLLISION_EVENTS,
@@ -102,6 +113,7 @@ impl AntBundle {
         direction: Vec3,
         speed: f32,
         scale: f32,
+        color: Color,
         nav_node_entity: Entity,
         nav_node: &NavNode,
         nav_node_pos: &GlobalTransform,
@@ -112,6 +124,7 @@ impl AntBundle {
             direction,
             speed,
             scale,
+            color,
             nav_node_entity,
             nav_node,
             nav_node_pos,
@@ -135,11 +148,14 @@ pub fn update_ant_position_kinds(
         &CollidingEntities,
         &GlobalTransform,
         &mut Transform,
+        &mut Handle<AntMaterial>,
     )>,
     nav_nodes: Query<(Entity, &NavNode, &GlobalTransform)>,
     nav_mesh_lut: Res<NavMeshLUT>,
 ) {
-    for (mut ant, colliding_entities, ant_transform_global, mut ant_transform) in ants.iter_mut() {
+    for (mut ant, colliding_entities, ant_transform_global, mut ant_transform, mut ant_material) in
+        ants.iter_mut()
+    {
         // Detect walls and update [AntPosition]
         match ant.position_kind {
             AntPositionKind::Background => {
@@ -296,6 +312,13 @@ pub fn update_ant_position_kinds(
                 .unwrap();
             ant.current_wall = (background_entity, background_entity_transform);
         }
+        // Update material
+        *ant_material = match ant.position_kind {
+            AntPositionKind::Background => ANT_MATERIAL_TOP.clone(),
+            AntPositionKind::VerticalWall { .. } | AntPositionKind::HorizontalWall { .. } => {
+                ANT_MATERIAL_SIDE.clone()
+            }
+        }
     }
 }
 
@@ -326,10 +349,26 @@ pub fn assert_ants(ants: Query<(Entity, &Ant, &GlobalTransform)>, nav_nodes: Que
 /// Calculate desired direction of ants according to the navigation mesh
 pub fn update_ant_direction() {}
 
+pub fn update_ant_direction_randomly(mut ants: Query<&mut Ant>, time: Res<Time>) {
+    let mut rng = rand::thread_rng();
+    let dt = time.delta_seconds_f64();
+    for mut ant in ants.iter_mut() {
+        if rng.gen_bool(dt) {
+            ant.direction = Vec3::new(
+                rng.gen::<f32>() - 0.5,
+                rng.gen::<f32>() - 0.5,
+                rng.gen::<f32>() - 0.5,
+            )
+            .normalize();
+        }
+    }
+}
+
 /// Move ants according to their direction and the constraints of [AntPositionKind]
 pub fn update_ant_position(mut ants: Query<(&Ant, &mut Transform)>, time: Res<Time>) {
     let dt = time.delta_seconds();
     for (ant, mut ant_transform) in ants.iter_mut() {
+        let dt = dt.min(TILE_SIZE / 2. / ant.speed); // Clamp to avoid going through walls when lagging
         match ant.position_kind {
             AntPositionKind::Background => {
                 let delta_xy = ant.direction.xy().normalize_or_zero() * ant.speed * dt;

@@ -236,6 +236,7 @@ fn spawn_ants_on_navmesh(
             direction,
             speed,
             scale,
+            Color::BLACK,
             nav_node_entity,
             nav_node,
             nav_node_pos,

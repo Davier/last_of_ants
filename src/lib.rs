@@ -7,6 +7,8 @@ use bevy_ecs_ldtk::{prelude::*, systems::process_ldtk_levels};
 use bevy_rapier2d::prelude::*;
 
 use components::{ants::*, nav_mesh::*, player::*, tiles::*};
+use helpers::pause_if_not_focused;
+use render::render_ant::AntMaterialPlugin;
 
 pub struct GamePlugin;
 
@@ -23,8 +25,15 @@ impl Plugin for GamePlugin {
                 DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites? (TODO: test)
                 LdtkPlugin,
                 RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(PIXELS_PER_METER),
+                AntMaterialPlugin,
             ))
-            .add_systems(PreUpdate, spawn_nav_mesh.after(process_ldtk_levels))
+            .add_systems(
+                PreUpdate,
+                (
+                    spawn_nav_mesh.after(process_ldtk_levels),
+                    pause_if_not_focused,
+                ),
+            )
             .add_systems(
                 Update,
                 (
@@ -33,7 +42,8 @@ impl Plugin for GamePlugin {
                     (
                         update_ant_position_kinds,
                         assert_ants, // TODO: disable in release?
-                        update_ant_direction,
+                        // update_ant_direction,
+                        update_ant_direction_randomly,
                         update_ant_position,
                     )
                         .chain(),
@@ -44,7 +54,7 @@ impl Plugin for GamePlugin {
 
 pub const PIXELS_PER_METER: f32 = 16.;
 pub const PLAYER_SIZE: Vec2 = Vec2::new(8., 16.);
-pub const ANT_SIZE: Vec2 = Vec2::new(8., 8.);
+pub const ANT_SIZE: Vec2 = Vec2::new(16., 16.);
 /// Vertical and horizontal edges will have their [NavNode] placed at `tile_size * WALL_Z_FACTOR / 2.` in Z
 pub const WALL_Z_FACTOR: f32 = 1.;
 

@@ -2,7 +2,10 @@
 
 use std::{f32::consts::PI, ops::DerefMut};
 
-use crate::components::ants::{Ant, AntPositionKind};
+use crate::{
+    components::ants::{Ant, AntPositionKind},
+    ANT_SIZE,
+};
 use bevy::{
     core_pipeline::core_2d::Transparent2d,
     ecs::system::{
@@ -27,8 +30,9 @@ use bevy::{
         Extract, Render, RenderApp, RenderSet,
     },
     sprite::{
-        extract_mesh2d, Material2d, Material2dPlugin, RenderMesh2dInstance, RenderMesh2dInstances,
-        SetMaterial2dBindGroup, SetMesh2dBindGroup, SetMesh2dViewBindGroup,
+        extract_mesh2d, Material2d, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle,
+        RenderMesh2dInstance, RenderMesh2dInstances, SetMaterial2dBindGroup, SetMesh2dBindGroup,
+        SetMesh2dViewBindGroup,
     },
 };
 use bytemuck::{Pod, Zeroable};
@@ -40,6 +44,18 @@ impl Plugin for AntMaterialPlugin {
             Material2dPlugin::<AntMaterial>::default(),
             ExtractComponentPlugin::<RenderAnt>::default(),
         ));
+
+        let mut materials = app.world.resource_mut::<Assets<AntMaterial>>();
+        materials.insert(ANT_MATERIAL_SIDE, AntMaterial::new(true));
+        materials.insert(ANT_MATERIAL_TOP, AntMaterial::new(false));
+        let mut meshes = app.world.resource_mut::<Assets<Mesh>>();
+        meshes.insert(
+            ANT_MESH2D.0,
+            Mesh::from(shape::Quad {
+                size: ANT_SIZE,
+                flip: false,
+            }),
+        );
 
         if let Ok(render_app) = app.get_sub_app_mut(RenderApp) {
             render_app
@@ -53,10 +69,24 @@ impl Plugin for AntMaterialPlugin {
         }
     }
 }
-#[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
+
+pub type AntMaterialBundle = MaterialMesh2dBundle<AntMaterial>;
+pub const ANT_MATERIAL_SIDE: Handle<AntMaterial> = Handle::weak_from_u128(12261044474578958661);
+pub const ANT_MATERIAL_TOP: Handle<AntMaterial> = Handle::weak_from_u128(6041464017875828972);
+pub const ANT_MESH2D: Mesh2dHandle = Mesh2dHandle(Handle::weak_from_u128(17147126180050932214));
+
+#[derive(Asset, TypePath, AsBindGroup, Debug, Copy, Clone)]
 pub struct AntMaterial {
     #[uniform(0)]
     pub is_side: u32,
+}
+
+impl AntMaterial {
+    pub fn new(is_side: bool) -> AntMaterial {
+        Self {
+            is_side: is_side as u32,
+        }
+    }
 }
 
 impl Material2d for AntMaterial {
@@ -128,14 +158,10 @@ impl ExtractComponent for RenderAnt {
     type Out = Self;
 
     fn extract_component(ant: bevy::ecs::query::QueryItem<'_, Self::Query>) -> Option<Self::Out> {
-        let color = match ant.position_kind {
-            AntPositionKind::Background => Color::BLACK,
-            AntPositionKind::VerticalWall { .. } => Color::BLUE,
-            AntPositionKind::HorizontalWall { .. } => Color::GREEN,
-        }
-        .into();
         Some(Self {
-            instance: AntMaterialInstance { color },
+            instance: AntMaterialInstance {
+                color: ant.color.into(),
+            },
         })
     }
 }

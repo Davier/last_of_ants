@@ -170,7 +170,8 @@ fn sd_color_debug(d: f32, color: vec3<f32>) -> vec4<f32> {
 const PI: f32 = 3.1415;
 
 fn fragment_side(mesh: VertexOutput) -> vec4<f32> {
-    let pos = (mesh.uv.xy * 2. - 1.) * 150.;
+    var pos = (mesh.uv.xy * 2. - 1.) * 150.;
+    pos.y = pos.y - 70.;
     let grid = vec2<u32>(pos / 10.);
     let grid_sum = grid.x + grid.y;
     let checker = (grid_sum % 2u) == 1u;

@@ -1,6 +1,6 @@
 pub mod render_world_inspector;
 
-use bevy::prelude::*;
+use bevy::{prelude::*, window::WindowFocused};
 use bevy_rapier2d::render::DebugRenderContext;
 
 pub fn on_key_just_pressed(key: KeyCode) -> impl FnMut(Res<Input<KeyCode>>) -> bool + Clone {
@@ -28,6 +28,16 @@ pub fn run_after(count: usize) -> impl FnMut(Local<usize>) -> bool + Clone {
         } else {
             *local_count += 1;
             false
+        }
+    }
+}
+
+pub fn pause_if_not_focused(mut events: EventReader<WindowFocused>, mut time: ResMut<Time<Virtual>>) {
+    for event in events.read() {
+        if event.focused {
+            time.unpause();
+        } else {
+            time.pause();
         }
     }
 }

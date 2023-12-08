@@ -137,11 +137,14 @@ fn spawn_ants_on_navmesh(
         // let scale = rng.gen::<f32>() + 0.5;
         let scale = 1.; // TODO
         let speed = 40.;
+        let color = rng.gen::<f32>() * 0.005;
+        let color = Color::rgb(color, color, color);
         AntBundle::spawn_on_nav_node(
             &mut commands,
             direction,
             speed,
             scale,
+            color,
             nav_node_entity,
             nav_node,
             nav_node_pos,
