@@ -352,6 +352,7 @@ checksum = "35636a1494ede3b646cc98f74f8e62c773a38a659ebc777a2cf26b9b74171df9"
 [[package]]
 name = "bevy"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_dylib",
  "bevy_internal",
@@ -399,6 +400,7 @@ dependencies = [
 [[package]]
 name = "bevy_a11y"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "accesskit",
  "bevy_app",
@@ -409,6 +411,7 @@ dependencies = [
 [[package]]
 name = "bevy_animation"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -426,6 +429,7 @@ dependencies = [
 [[package]]
 name = "bevy_app"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_derive",
  "bevy_ecs",
@@ -440,6 +444,7 @@ dependencies = [
 [[package]]
 name = "bevy_asset"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "async-broadcast",
  "async-fs",
@@ -471,6 +476,7 @@ dependencies = [
 [[package]]
 name = "bevy_asset_macros"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -481,6 +487,7 @@ dependencies = [
 [[package]]
 name = "bevy_audio"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -497,6 +504,7 @@ dependencies = [
 [[package]]
 name = "bevy_core"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -510,6 +518,7 @@ dependencies = [
 [[package]]
 name = "bevy_core_pipeline"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -530,6 +539,7 @@ dependencies = [
 [[package]]
 name = "bevy_derive"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_macro_utils",
  "quote",
@@ -539,6 +549,7 @@ dependencies = [
 [[package]]
 name = "bevy_diagnostic"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -552,6 +563,7 @@ dependencies = [
 [[package]]
 name = "bevy_dylib"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_internal",
 ]
@@ -559,6 +571,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "async-channel 1.9.0",
  "bevy_ecs_macros",
@@ -607,6 +620,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs_macros"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -640,6 +654,7 @@ dependencies = [
 [[package]]
 name = "bevy_encase_derive"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_macro_utils",
  "encase_derive_impl",
@@ -658,6 +673,7 @@ dependencies = [
 [[package]]
 name = "bevy_gilrs"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -672,6 +688,7 @@ dependencies = [
 [[package]]
 name = "bevy_gizmos"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -690,6 +707,7 @@ dependencies = [
 [[package]]
 name = "bevy_gltf"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "base64 0.13.1",
  "bevy_animation",
@@ -718,6 +736,7 @@ dependencies = [
 [[package]]
 name = "bevy_hierarchy"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -731,6 +750,7 @@ dependencies = [
 [[package]]
 name = "bevy_input"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -743,6 +763,7 @@ dependencies = [
 [[package]]
 name = "bevy_internal"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_a11y",
  "bevy_animation",
@@ -780,6 +801,7 @@ dependencies = [
 [[package]]
 name = "bevy_log"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "android_log-sys",
  "bevy_app",
@@ -794,6 +816,7 @@ dependencies = [
 [[package]]
 name = "bevy_macro_utils"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -805,6 +828,7 @@ dependencies = [
 [[package]]
 name = "bevy_math"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "glam",
  "serde",
@@ -813,6 +837,7 @@ dependencies = [
 [[package]]
 name = "bevy_mikktspace"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "glam",
 ]
@@ -820,6 +845,7 @@ dependencies = [
 [[package]]
 name = "bevy_pbr"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -844,6 +870,7 @@ dependencies = [
 [[package]]
 name = "bevy_ptr"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 
 [[package]]
 name = "bevy_rapier2d"
@@ -861,6 +888,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_math",
  "bevy_ptr",
@@ -878,6 +906,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect_derive"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -889,6 +918,7 @@ dependencies = [
 [[package]]
 name = "bevy_render"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "async-channel 1.9.0",
  "bevy_app",
@@ -933,6 +963,7 @@ dependencies = [
 [[package]]
 name = "bevy_render_macros"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -943,6 +974,7 @@ dependencies = [
 [[package]]
 name = "bevy_scene"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -962,6 +994,7 @@ dependencies = [
 [[package]]
 name = "bevy_sprite"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -986,6 +1019,7 @@ dependencies = [
 [[package]]
 name = "bevy_tasks"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "async-channel 1.9.0",
  "async-executor",
@@ -998,6 +1032,7 @@ dependencies = [
 [[package]]
 name = "bevy_text"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "ab_glyph",
  "bevy_app",
@@ -1018,6 +1053,7 @@ dependencies = [
 [[package]]
 name = "bevy_time"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1030,6 +1066,7 @@ dependencies = [
 [[package]]
 name = "bevy_transform"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1042,6 +1079,7 @@ dependencies = [
 [[package]]
 name = "bevy_ui"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_a11y",
  "bevy_app",
@@ -1070,6 +1108,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "ahash",
  "bevy_utils_proc_macros",
@@ -1086,6 +1125,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils_proc_macros"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1095,6 +1135,7 @@ dependencies = [
 [[package]]
 name = "bevy_window"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "bevy_a11y",
  "bevy_app",
@@ -1109,6 +1150,7 @@ dependencies = [
 [[package]]
 name = "bevy_winit"
 version = "0.12.1"
+source = "git+https://github.com/Davier/bevy.git?branch=custom-0.12#8bee30847de3a2643be92f89fb277fd4546fe6b6"
 dependencies = [
  "accesskit_winit",
  "approx",
