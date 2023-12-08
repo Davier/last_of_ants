@@ -425,6 +425,8 @@ pub fn update_ant_direction(
         distances.sort_by(|a, b| a.4.partial_cmp(&b.4).unwrap());
         let closest = &mut distances[0];
 
+        //let closest = nodes_query.get(ant.current_wall.0).unwrap();
+
         // the gradient for the pheromon the ant follows is not null: follow it
         let goal_gradient = closest.3 .0[ant.goal].extend(0.);
         if goal_gradient != Vec3::ZERO {

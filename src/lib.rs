@@ -6,7 +6,7 @@ use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers};
 use bevy_ecs_ldtk::{prelude::*, systems::process_ldtk_levels};
 use bevy_rapier2d::prelude::*;
 
-use components::{ants::*, nav_mesh::*, player::*, tiles::*};
+use components::{ants::*, nav_mesh::*, player::*, tiles::*, pheromon::init_pheromons};
 use helpers::pause_if_not_focused;
 use render::render_ant::AntMaterialPlugin;
 
@@ -31,6 +31,7 @@ impl Plugin for GamePlugin {
                 PreUpdate,
                 (
                     spawn_nav_mesh.after(process_ldtk_levels),
+                    init_pheromons.after(spawn_nav_mesh),
                     pause_if_not_focused,
                 ),
             )
