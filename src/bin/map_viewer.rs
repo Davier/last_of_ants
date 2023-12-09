@@ -13,8 +13,8 @@ use last_of_ants::{
         ants::{debug_ants, AntColorKind, LiveAnt, LiveAntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
         pheromons::{
-            apply_sources, compute_gradients, diffuse_pheromons, PheromonGradients, PheromonSource,
-            Pheromons, SourceCoord, PH1, PH2,
+            apply_sources, compute_gradients, diffuse_pheromons, Pheromons, PheromonsGradients,
+            PheromonsSource, SourceCoord, PH1, PH2,
         },
         zombants::spawn_zombant_queen,
     },
@@ -228,7 +228,7 @@ fn camera_movement(
 }
 
 fn debug_pheromons(
-    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonGradients)>,
+    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonsGradients)>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
     mut gizmos: Gizmos,
 
@@ -267,29 +267,39 @@ fn debug_pheromons(
         );
 
         if buttons.pressed(MouseButton::Left) {
-            closest.3.pheromons[PH1] += 1.;
+            closest.3.concentrations[PH1] += 1.;
         } else if buttons.pressed(MouseButton::Right) {
-            closest.3.pheromons[PH2] += 1.;
+            closest.3.concentrations[PH2] += 1.;
         }
     }
 
     for (e, n, ph, g) in query_nodes.iter() {
         let t = query_transform.get(e).unwrap();
-        gizmos.circle_2d(t.translation().xy(), ph.pheromons[PH1], Color::PINK);
+        gizmos.circle_2d(t.translation().xy(), ph.concentrations[PH1], Color::PINK);
         gizmos.ray_2d(t.translation().xy(), g.gradients[PH1] * 2.0, Color::BLUE);
-        gizmos.circle_2d(t.translation().xy(), ph.pheromons[PH2], Color::YELLOW_GREEN);
+        gizmos.circle_2d(
+            t.translation().xy(),
+            ph.concentrations[PH2],
+            Color::YELLOW_GREEN,
+        );
         gizmos.ray_2d(t.translation().xy(), g.gradients[PH2] * 2.0, Color::YELLOW);
     }
 }
 
 fn debug_sources(
     mut commands: Commands,
-    sources: Query<(&PheromonSource, &SourceCoord)>,
+    sources: Query<(&PheromonsSource, &SourceCoord)>,
     nav_mesh_lut: Res<NavMeshLUT>,
     transforms: Query<&GlobalTransform, With<NavNode>>,
 ) {
     if nav_mesh_lut.is_changed() {
-        for (PheromonSource { value }, SourceCoord { x, y }) in sources.iter() {
+        for (
+            PheromonsSource {
+                concentrations: value,
+            },
+            SourceCoord { x, y },
+        ) in sources.iter()
+        {
             let (node_id, idx) = nav_mesh_lut
                 .get_tile_entity_grid(*x as usize, *y as usize)
                 .unwrap();
@@ -297,7 +307,9 @@ fn debug_sources(
             commands
                 .get_entity(node_id)
                 .unwrap()
-                .insert(PheromonSource { value: *value });
+                .insert(PheromonsSource {
+                    concentrations: *value,
+                });
         }
     }
 }

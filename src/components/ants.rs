@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     nav_mesh::NavNode,
-    pheromons::{PheromonGradients, PH1},
+    pheromons::{PheromonsGradients, PH1},
 };
 
 #[derive(Bundle)]
@@ -494,7 +494,7 @@ pub fn assert_ants(
 /// Calculate desired direction of ants according to the navigation mesh
 pub fn update_ant_direction(
     mut ants: Query<&mut AntMovement>,
-    gradients: Query<&PheromonGradients>,
+    gradients: Query<&PheromonsGradients>,
 ) {
     let mut rng = rand::thread_rng();
 
@@ -502,11 +502,12 @@ pub fn update_ant_direction(
         let closest_gradient = gradients.get(ant_movement.current_wall.0).unwrap();
 
         // the gradient for the pheromon the ant follows is not null: follow it
+        let random = rng.gen_range(0.0..1.0);
         let goal_gradient = closest_gradient.gradients[ant_movement.goal].extend(0.);
         if goal_gradient != Vec3::ZERO {
+            // TODO randomize a bit the direction
             ant_movement.direction = goal_gradient;
         } else {
-            let random = rng.gen_range(0.0..1.0);
             if 0.01 > random {
                 ant_movement.direction =
                     Quat::from_rotation_z(rng.gen_range(-(PI / 2.)..(PI / 2.)))

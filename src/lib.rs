@@ -6,6 +6,7 @@ pub mod ui;
 
 use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers};
 use bevy_ecs_ldtk::{prelude::*, systems::process_ldtk_levels};
+use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 
 use components::{
@@ -13,7 +14,7 @@ use components::{
     clues::place_clues,
     cocoons::CocoonBundle,
     nav_mesh::*,
-    pheromons::{init_pheromons, PheromonSourceBundle},
+    pheromons::{init_pheromons, PheromonSourceBundle, PheromonsConfig},
     player::*,
     tiles::*,
     zombants::ZombAntQueenSpawnPoint,
@@ -41,6 +42,7 @@ impl Plugin for GamePlugin {
             .insert_resource(AssetMetaCheck::Never)
             .init_resource::<NavMeshLUT>()
             .add_event::<ClueEvent>()
+            .init_resource::<PheromonsConfig>()
             .add_plugins((
                 DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites? (TODO: test)
                 LdtkPlugin,
@@ -48,6 +50,7 @@ impl Plugin for GamePlugin {
                 AntMaterialPlugin,
                 CocoonMaterialPlugin,
             ))
+            .add_plugins(ResourceInspectorPlugin::<PheromonsConfig>::default())
             .add_systems(
                 PreUpdate,
                 (

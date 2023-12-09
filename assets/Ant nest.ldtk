@@ -238,12 +238,12 @@
 			"pivotY": 0,
 			"fieldDefs": [
 				{
-					"identifier": "Value",
+					"identifier": "Values",
 					"doc": null,
-					"__type": "Float",
+					"__type": "Array<Float>",
 					"uid": 11,
 					"type": "F_Float",
-					"isArray": false,
+					"isArray": true,
 					"canBeNull": false,
 					"arrayMinLength": null,
 					"arrayMaxLength": null,
@@ -262,7 +262,7 @@
 					"max": null,
 					"regex": null,
 					"acceptFileTypes": null,
-					"defaultOverride": { "id": "V_Float", "params": [1] },
+					"defaultOverride": null,
 					"textLanguageMode": null,
 					"symmetricalRef": false,
 					"autoChainRef": true,
@@ -677,6 +677,22 @@
 							"defUid": 14,
 							"px": [192,752],
 							"fieldInstances": []
+						},
+						{
+							"__identifier": "Source",
+							"__grid": [10,47],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#3E8948",
+							"__worldX": 175,
+							"__worldY": 635,
+							"iid": "83437a90-8990-11ee-bf56-a7c162dea400",
+							"width": 16,
+							"height": 16,
+							"defUid": 10,
+							"px": [175,763],
+							"fieldInstances": [{ "__identifier": "Values", "__type": "Array<Float>", "__value": [0,40], "__tile": null, "defUid": 11, "realEditorValues": [ { "id": "V_Float", "params": [0] }, { "id": "V_Float", "params": [40] } ] }]
 						}
 					]
 				},
