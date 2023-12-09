@@ -4,8 +4,6 @@ use bevy::{ecs::system::EntityCommands, prelude::*, render::view::RenderLayers};
 use bevy_rapier2d::prelude::*;
 use rand::{Rng, random};
 
-use itertools::Itertools;
-
 use crate::{
     render::render_ant::{
         AntMaterial, AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D,
@@ -16,7 +14,7 @@ use crate::{
 
 use super::{
     nav_mesh::{NavMeshLUT, NavNode},
-    pheromon::{PheromonGradients, Pheromons, PH1},
+    pheromons::{PheromonGradients, PH1},
 };
 
 #[derive(Bundle)]

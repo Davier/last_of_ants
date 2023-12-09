@@ -1,5 +1,3 @@
-use std::f32::consts::PI;
-
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
@@ -13,10 +11,10 @@ use itertools::Itertools;
 use last_of_ants::{
     components::{
         ants::{debug_ants, Ant, AntBundle},
-        nav_mesh::{debug_nav_mesh, NavNode},
-        pheromon::{
-            compute_gradients, diffuse_pheromons, PheromonGradients, PheromonSource, Pheromons,
-            PH1, PH2,
+        nav_mesh::{debug_nav_mesh, NavMeshLUT, NavNode},
+        pheromons::{
+            apply_sources, compute_gradients, diffuse_pheromons, PheromonGradients, PheromonSource,
+            Pheromons, SourceCoord, PH1, PH2,
         },
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
@@ -45,7 +43,8 @@ fn main() {
                 camera_movement,
                 debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
                 diffuse_pheromons.run_if(toggle_on_key(KeyCode::H)),
-                compute_gradients.after(diffuse_pheromons),
+                apply_sources.after(diffuse_pheromons),
+                compute_gradients.after(apply_sources),
                 update_text_counters,
             ),
         )
@@ -84,12 +83,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
             TextSection::default(), // Ant counter
         ]))
         .insert(TextCounters);
-}
-
-fn debug_sources(sources: Query<&PheromonSource, Added<PheromonSource>>) {
-    for source in sources.iter() {
-        debug!("{:?}", source);
-    }
 }
 
 #[derive(Debug, Component)]
@@ -236,6 +229,7 @@ fn debug_pheromons(
         .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
         .map(|ray| ray.origin.truncate())
     {
+        // debug!("Cursor at: {:?}", cursor_world_position);
         let mut distances = query_nodes
             .iter_mut()
             .map(|(id, _, ph, gd)| {
@@ -271,5 +265,25 @@ fn debug_pheromons(
         gizmos.ray_2d(t.translation().xy(), g.gradients[PH1] * 2.0, Color::BLUE);
         gizmos.circle_2d(t.translation().xy(), ph.pheromons[PH2], Color::YELLOW_GREEN);
         gizmos.ray_2d(t.translation().xy(), g.gradients[PH2] * 2.0, Color::YELLOW);
+    }
+}
+
+fn debug_sources(
+    mut commands: Commands,
+    sources: Query<(&PheromonSource, &SourceCoord)>,
+    nav_mesh_lut: Res<NavMeshLUT>,
+    transforms: Query<&GlobalTransform, With<NavNode>>,
+) {
+    if nav_mesh_lut.is_changed() {
+        for (PheromonSource { value }, SourceCoord { x, y }) in sources.iter() {
+            let (node_id, idx) = nav_mesh_lut
+                .get_tile_entity_grid(*x as usize, *y as usize)
+                .unwrap();
+            let node = transforms.get(node_id).unwrap();
+            commands
+                .get_entity(node_id)
+                .unwrap()
+                .insert(PheromonSource { value: *value });
+        }
     }
 }

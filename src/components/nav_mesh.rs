@@ -479,6 +479,16 @@ impl NavMeshLUT {
         Some((self.grid_entity[index], index))
     }
 
+    pub fn get_tile_entity_grid(&self, x: usize, y: usize) -> Option<(Entity, usize)> {
+        let index = x + y * self.grid_width;
+        if index > self.grid_entity.len() {
+            warn!("Trying to find a tile outside the map");
+            return None;
+        }
+
+        Some((self.grid_entity[index], index))
+    }
+
     pub fn get_tile_edges(&self, tile_index: usize) -> TileEdges {
         self.grid_edges[tile_index]
     }
