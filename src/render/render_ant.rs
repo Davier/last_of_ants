@@ -113,6 +113,10 @@ impl Material2d for AntMaterial {
             vec![
                 // color
                 VertexFormat::Float32x4,
+                // phase
+                VertexFormat::Float32,
+                // padding
+                VertexFormat::Float32x3,
             ],
         );
         // The mesh pipeline uses location 0 through 4
@@ -139,6 +143,7 @@ impl Default for AntMaterialMeta {
     }
 }
 
+// TODO: get rid of RenderAnt
 #[derive(Debug, Component)]
 pub struct RenderAnt {
     instance: AntMaterialInstance,
@@ -148,6 +153,8 @@ pub struct RenderAnt {
 #[derive(Debug, Copy, Clone, Pod, Zeroable, Component)]
 pub struct AntMaterialInstance {
     color: Vec4,
+    animation_phase: f32,
+    _padding: Vec3,
 }
 
 impl ExtractComponent for RenderAnt {
@@ -161,6 +168,8 @@ impl ExtractComponent for RenderAnt {
         Some(Self {
             instance: AntMaterialInstance {
                 color: ant.color.into(),
+                animation_phase: ant.animation_phase,
+                _padding: Vec3::ZERO,
             },
         })
     }

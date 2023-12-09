@@ -49,7 +49,7 @@ fn setup(
         .into();
     let material_side: Handle<AntMaterial> = materials.add(AntMaterial { is_side: 1 });
     let material_top: Handle<AntMaterial> = materials.add(AntMaterial { is_side: 0 });
-    for _ in 0..100 {
+    for _ in 0..10 {
         let angle = rng.gen::<f32>() * 2. * PI;
         let direction = Vec3::new(angle.cos(), angle.sin(), 0.);
         let is_side = rng.gen_bool(0.5);
@@ -89,6 +89,7 @@ fn setup(
                 current_wall: (Entity::PLACEHOLDER, GlobalTransform::default()),
                 scale,
                 color: Color::WHITE,
+                animation_phase: rng.gen::<f32>() * 2. * PI,
             },
         ));
     }

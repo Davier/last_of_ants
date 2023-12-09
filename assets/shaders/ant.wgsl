@@ -1,5 +1,5 @@
 #import bevy_sprite::mesh2d_functions
-#import bevy_sprite::mesh2d_view_bindings::view
+#import bevy_sprite::mesh2d_view_bindings::{view, globals}
 
 // TODO: credits 
 
@@ -55,6 +55,7 @@ struct Vertex {
     @location(4) color: vec4<f32>,
 #endif
     @location(5) instance_color: vec4<f32>,
+    @location(6) instance_phase: f32,
 };
 
 struct VertexOutput {
@@ -71,6 +72,7 @@ struct VertexOutput {
     @location(4) color: vec4<f32>,
     #endif
     @location(5) instance_color: vec4<f32>,
+    @location(6) instance_phase: f32,
 }
 
 @vertex
@@ -105,6 +107,7 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 #endif
 
     out.instance_color = vertex.instance_color;
+    out.instance_phase = vertex.instance_phase;
     return out;
 }
 
@@ -168,14 +171,12 @@ fn sd_color_debug(d: f32, color: vec3<f32>) -> vec4<f32> {
 @group(1) @binding(0) var<uniform> material_is_side: u32;
 
 const PI: f32 = 3.1415;
+const animation_speed = 4.; // Cycles per second
 
 fn fragment_side(mesh: VertexOutput) -> vec4<f32> {
+    let anim_1: f32 = cos(globals.time * 2. * PI * animation_speed + mesh.instance_phase);
     var pos = (mesh.uv.xy * 2. - 1.) * 150.;
     pos.y = pos.y - 70.;
-    let grid = vec2<u32>(pos / 10.);
-    let grid_sum = grid.x + grid.y;
-    let checker = (grid_sum % 2u) == 1u;
-    var color = select(vec4(0.5, 0.5, 0.5, 1.), vec4(1.), checker);
     // Head
     var d = sd_circle(pos + vec2(60., -10.), 30.);
     // Thorax
@@ -188,25 +189,23 @@ fn fragment_side(mesh: VertexOutput) -> vec4<f32> {
     d = opUnion(d, sd_segment(pos, vec2(-100., -20.), vec2(-125., 65.)));
     d = opUnion(d, sd_segment(pos, vec2(-100., -20.), vec2(-60., 10.)));
     // Leg front
-    d = opUnion(d, sd_segment(pos, vec2(-10., -40.), vec2(-40., 65.)));
+    d = opUnion(d, sd_segment(pos, vec2(-10., -40.), vec2(-40. + anim_1 * 10., 65.)));
     d = opUnion(d, sd_segment(pos, vec2(-10., -40.), vec2(10., 20.)));
     // Leg middle
-    d = opUnion(d, sd_segment(pos, vec2(10., -40.), vec2(0., 65.)));
+    d = opUnion(d, sd_segment(pos, vec2(10., -40.), vec2(0. - anim_1 * 10., 65.)));
     d = opUnion(d, sd_segment(pos, vec2(10., -40.), vec2(30., 20.)));
     // Leg back
-    d = opUnion(d, sd_segment(pos, vec2(30., -40.), vec2(60., 65.)));
+    d = opUnion(d, sd_segment(pos, vec2(30., -40.), vec2(60. + anim_1 * 10., 65.)));
     d = opUnion(d, sd_segment(pos, vec2(30., -40.), vec2(30., 20.)));
-    // return sd_color_debug(d, color.xyz);
+
     return sd_color_smooth(d - 3., mesh.instance_color.xyz);
 }
 
 fn fragment_top(mesh: VertexOutput) -> vec4<f32> {
+    let anim_1: f32 = cos(globals.time * 2. * PI * animation_speed + mesh.instance_phase);
     var pos = (mesh.uv.xy * 2. - 1.) * 150.;
+    // Vertical symmetry
     pos.x = abs(pos.x);
-    let grid = vec2<u32>(pos / 10.);
-    let grid_sum = grid.x + grid.y;
-    let checker = (grid_sum % 2u) == 1u;
-    var color = select(vec4(0.5, 0.5, 0.5, 1.), vec4(1.), checker);
     // Head
     var d = sd_circle(pos + vec2(0., 60.), 30.);
     // Thorax
@@ -219,15 +218,14 @@ fn fragment_top(mesh: VertexOutput) -> vec4<f32> {
     d = opUnion(d, sd_segment(pos, vec2(50., -110.), vec2(25., -145.)));
     d = opUnion(d, sd_segment(pos, vec2(50., -110.), vec2(10., -60.)));
     // Leg front
-    d = opUnion(d, sd_segment(pos, vec2(40., -30.), vec2(80., -40.)));
+    d = opUnion(d, sd_segment(pos, vec2(40., -30.), vec2(80., -40. + anim_1 * 10.)));
     d = opUnion(d, sd_segment(pos, vec2(40., -30.), vec2(20., 10.)));
     // Leg middle
-    d = opUnion(d, sd_segment(pos, vec2(40., 0.), vec2(85., 15.)));
+    d = opUnion(d, sd_segment(pos, vec2(40., 0.), vec2(85., 15. - anim_1 * 10.)));
     d = opUnion(d, sd_segment(pos, vec2(40., 0.), vec2(20., 20.)));
     // Leg back
-    d = opUnion(d, sd_segment(pos, vec2(40., 30.), vec2(75., 80.)));
+    d = opUnion(d, sd_segment(pos, vec2(40., 30.), vec2(75., 80. + anim_1 * 10.)));
     d = opUnion(d, sd_segment(pos, vec2(40., 30.), vec2(20., 30.)));
 
-    // return sd_color_debug(d, color.xyz);
     return sd_color_smooth(d - 3., mesh.instance_color.xyz);
 }

@@ -1,6 +1,8 @@
+use std::f32::consts::PI;
+
 use bevy::{ecs::system::EntityCommands, prelude::*, render::view::RenderLayers};
 use bevy_rapier2d::prelude::*;
-use rand::Rng;
+use rand::{Rng, random};
 
 use crate::{
     render::render_ant::{
@@ -34,6 +36,7 @@ pub struct Ant {
     pub color: Color,
     pub direction: Vec3,
     pub current_wall: (Entity, GlobalTransform), // FIXME: use relative transforms
+    pub animation_phase: f32,
 }
 
 impl AntBundle {
@@ -92,6 +95,7 @@ impl AntBundle {
                 direction,
                 current_wall,
                 color,
+                animation_phase: random::<f32>() * 2. * PI, // FIXME: use thread rng
             },
             material,
             collider: Collider::cuboid(ANT_SIZE.x / 2., ANT_SIZE.y / 2.),
