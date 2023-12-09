@@ -208,7 +208,6 @@ pub fn spawn_nav_mesh(
                     }
                 };
                 let back = grid_entity[tile.i()];
-                debug!("hello");
                 commands.entity(up_edge).insert((
                     NavNode::HorizontalEdge {
                         left,
@@ -477,6 +476,16 @@ impl NavMeshLUT {
             warn!("Trying to find a non-empty tile");
             return None;
         }
+        Some((self.grid_entity[index], index))
+    }
+
+    pub fn get_tile_entity_grid(&self, x: usize, y: usize) -> Option<(Entity, usize)> {
+        let index = x + y * self.grid_width;
+        if index > self.grid_entity.len() {
+            warn!("Trying to find a tile outside the map");
+            return None;
+        }
+
         Some((self.grid_entity[index], index))
     }
 

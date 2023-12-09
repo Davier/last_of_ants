@@ -12,7 +12,10 @@ use crate::{
     COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE, WALL_Z_FACTOR,
 };
 
-use super::nav_mesh::{NavMeshLUT, NavNode};
+use super::{
+    nav_mesh::{NavMeshLUT, NavNode},
+    pheromons::{PheromonGradients, PH1},
+};
 
 #[derive(Bundle)]
 pub struct AntBundle {
@@ -37,6 +40,7 @@ pub struct Ant {
     pub direction: Vec3,
     pub current_wall: (Entity, GlobalTransform), // FIXME: use relative transforms
     pub animation_phase: f32,
+    pub goal: usize, // TODO turn into enum
 }
 
 impl AntBundle {
@@ -96,6 +100,7 @@ impl AntBundle {
                 current_wall,
                 color,
                 animation_phase: random::<f32>() * 2. * PI, // FIXME: use thread rng
+                goal: PH1,
             },
             material,
             collider: Collider::cuboid(ANT_SIZE.x / 2., ANT_SIZE.y / 2.),
@@ -396,7 +401,28 @@ pub fn assert_ants(
 }
 
 /// Calculate desired direction of ants according to the navigation mesh
-pub fn update_ant_direction() {}
+pub fn update_ant_direction(mut ants: Query<&mut Ant>, gradients: Query<&PheromonGradients>) {
+    let mut rng = rand::thread_rng();
+
+    for mut ant in ants.iter_mut() {
+        let closest_gradient = gradients.get(ant.current_wall.0).unwrap();
+
+        // the gradient for the pheromon the ant follows is not null: follow it
+        let goal_gradient = closest_gradient.gradients[ant.goal].extend(0.);
+        if goal_gradient != Vec3::ZERO {
+            ant.direction = goal_gradient;
+        } else {
+            let random = rng.gen_range(0.0..1.0);
+            if 0.01 > random {
+                ant.direction =
+                    Quat::from_rotation_z(rng.gen_range(-(PI / 2.)..(PI / 2.))) * ant.direction;
+            } else if 0.1 > random {
+                ant.direction =
+                    Quat::from_rotation_z(rng.gen_range(-(PI / 6.)..(PI / 6.))) * ant.direction;
+            }
+        }
+    }
+}
 
 pub fn update_ant_direction_randomly(mut ants: Query<&mut Ant>, time: Res<Time>) {
     let mut rng = rand::thread_rng();
