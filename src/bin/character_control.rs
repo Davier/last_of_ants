@@ -5,7 +5,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, AntBundle},
+        ants::{debug_ants, AntBundle, AntColorKind},
         nav_mesh::{debug_nav_mesh, NavNode},
         player::{update_player_sensor, Player},
     },
@@ -228,6 +228,9 @@ fn spawn_ants_on_navmesh(
             rng.gen::<f32>() - 0.5,
         )
         .normalize();
+        let color_primary_kind = AntColorKind::new_random(&mut rng);
+        let color_secondary_kind =
+            AntColorKind::new_random_from_primary(&mut rng, &color_primary_kind);
         let speed = 40.;
         // let scale = rng.gen::<f32>() + 0.5;
         let scale = 1.; // TODO
@@ -236,12 +239,14 @@ fn spawn_ants_on_navmesh(
             direction,
             speed,
             scale,
-            Color::BLACK,
+            color_primary_kind,
+            color_secondary_kind,
             nav_node_entity,
             nav_node,
             nav_node_pos,
             entities_holder,
             entities_holder_pos,
+            &mut rng,
         );
     }
     // }

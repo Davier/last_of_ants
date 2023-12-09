@@ -54,15 +54,16 @@ struct Vertex {
 #ifdef VERTEX_COLORS
     @location(4) color: vec4<f32>,
 #endif
-    @location(5) instance_color: vec4<f32>,
-    @location(6) instance_phase: f32,
+    @location(5) instance_color_primary: vec4<f32>,
+    @location(6) instance_color_secondary: vec4<f32>,
+    @location(7) instance_phase: f32,
 };
 
 struct VertexOutput {
     // this is `clip position` when the struct is used as a vertex stage output 
     // and `frag coord` when used as a fragment stage input
     @builtin(position) position: vec4<f32>,
-    @location(0) world_position: vec4<f32>,
+    @location(0) world_sosition: vec4<f32>,
     @location(1) world_normal: vec3<f32>,
     @location(2) uv: vec2<f32>,
     #ifdef VERTEX_TANGENTS
@@ -71,8 +72,9 @@ struct VertexOutput {
     #ifdef VERTEX_COLORS
     @location(4) color: vec4<f32>,
     #endif
-    @location(5) instance_color: vec4<f32>,
-    @location(6) instance_phase: f32,
+    @location(5) instance_color_primary: vec4<f32>,
+    @location(6) instance_color_secondary: vec4<f32>,
+    @location(7) instance_phase: f32,
 }
 
 @vertex
@@ -84,11 +86,11 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 
 #ifdef VERTEX_POSITIONS
     var model = mesh2d_functions::get_model_matrix(vertex.instance_index);
-    out.world_position = mesh2d_functions::mesh2d_position_local_to_world(
+    out.world_sosition = mesh2d_functions::mesh2d_position_local_to_world(
         model,
         vec4<f32>(vertex.position, 1.0)
     );
-    out.position = mesh2d_functions::mesh2d_position_world_to_clip(out.world_position);
+    out.position = mesh2d_functions::mesh2d_position_world_to_clip(out.world_sosition);
 #endif
 
 #ifdef VERTEX_NORMALS
@@ -106,7 +108,8 @@ fn vertex(vertex: Vertex) -> VertexOutput {
     out.color = vertex.color;
 #endif
 
-    out.instance_color = vertex.instance_color;
+    out.instance_color_primary = vertex.instance_color_primary;
+    out.instance_color_secondary = vertex.instance_color_secondary;
     out.instance_phase = vertex.instance_phase;
     return out;
 }
@@ -178,27 +181,27 @@ fn fragment_side(mesh: VertexOutput) -> vec4<f32> {
     var pos = (mesh.uv.xy * 2. - 1.) * 150.;
     pos.y = pos.y - 70.;
     // Head
-    var d = sd_circle(pos + vec2(60., -10.), 30.);
+    var d_s = sd_circle(pos + vec2(60., -10.), 30.);
     // Thorax
-    d = opUnion(d, sd_rounded_box(pos, vec2(50., 25.), 32.));
+    var d_p = sd_rounded_box(pos, vec2(50., 25.), 32.);
     // Waist
-    d = opUnion(d, sd_circle(pos + vec2(-55., 0.), 20.));
+    d_s = opUnion(d_s, sd_circle(pos + vec2(-55., 0.), 20.));
     // Bottom
-    d = opUnion(d, sd_rounded_box(rotate(pos + vec2(-90., -10.), -PI / 6.), vec2(40., 27.), 40.));
+    d_s = opUnion(d_s, sd_rounded_box(rotate(pos + vec2(-90., -10.), -PI / 6.), vec2(40., 27.), 40.));
     // Antenna
-    d = opUnion(d, sd_segment(pos, vec2(-100., -20.), vec2(-125., 65.)));
-    d = opUnion(d, sd_segment(pos, vec2(-100., -20.), vec2(-60., 10.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(-100., -20.), vec2(-125., 65.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(-100., -20.), vec2(-60., 10.)));
     // Leg front
-    d = opUnion(d, sd_segment(pos, vec2(-10., -40.), vec2(-40. + anim_1 * 10., 65.)));
-    d = opUnion(d, sd_segment(pos, vec2(-10., -40.), vec2(10., 20.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(-10., -40.), vec2(-40. + anim_1 * 10., 65.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(-10., -40.), vec2(10., 20.)));
     // Leg middle
-    d = opUnion(d, sd_segment(pos, vec2(10., -40.), vec2(0. - anim_1 * 10., 65.)));
-    d = opUnion(d, sd_segment(pos, vec2(10., -40.), vec2(30., 20.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(10., -40.), vec2(0. - anim_1 * 10., 65.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(10., -40.), vec2(20., 20.)));
     // Leg back
-    d = opUnion(d, sd_segment(pos, vec2(30., -40.), vec2(60. + anim_1 * 10., 65.)));
-    d = opUnion(d, sd_segment(pos, vec2(30., -40.), vec2(30., 20.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(30., -40.), vec2(60. + anim_1 * 10., 65.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(30., -40.), vec2(30., 20.)));
 
-    return sd_color_smooth(d - 3., mesh.instance_color.xyz);
+    return blend_colors(mesh, d_p, d_s);
 }
 
 fn fragment_top(mesh: VertexOutput) -> vec4<f32> {
@@ -207,25 +210,33 @@ fn fragment_top(mesh: VertexOutput) -> vec4<f32> {
     // Vertical symmetry
     pos.x = abs(pos.x);
     // Head
-    var d = sd_circle(pos + vec2(0., 60.), 30.);
+    var d_s = sd_circle(pos + vec2(0., 60.), 30.);
     // Thorax
-    d = opUnion(d, sd_rounded_box(pos, vec2(25., 50.), 32.));
+    var d_p = sd_rounded_box(pos, vec2(25., 50.), 32.);
     // Waist
-    d = opUnion(d, sd_circle(pos + vec2(0., -55.), 20.));
+    d_s = opUnion(d_s, sd_circle(pos + vec2(0., -55.), 20.));
     // Bottom
-    d = opUnion(d, sd_rounded_box(pos + vec2(0., -90.), vec2(27., 40.), 40.));
+    d_s = opUnion(d_s, sd_rounded_box(pos + vec2(0., -90.), vec2(27., 40.), 40.));
     // Antenna
-    d = opUnion(d, sd_segment(pos, vec2(50., -110.), vec2(25., -145.)));
-    d = opUnion(d, sd_segment(pos, vec2(50., -110.), vec2(10., -60.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(50., -110.), vec2(25., -145.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(50., -110.), vec2(10., -60.)));
     // Leg front
-    d = opUnion(d, sd_segment(pos, vec2(40., -30.), vec2(80., -40. + anim_1 * 10.)));
-    d = opUnion(d, sd_segment(pos, vec2(40., -30.), vec2(20., 10.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(40., -30.), vec2(80., -40. + anim_1 * 10.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(40., -30.), vec2(20., 10.)));
     // Leg middle
-    d = opUnion(d, sd_segment(pos, vec2(40., 0.), vec2(85., 15. - anim_1 * 10.)));
-    d = opUnion(d, sd_segment(pos, vec2(40., 0.), vec2(20., 20.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(40., 0.), vec2(85., 15. - anim_1 * 10.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(40., 0.), vec2(20., 20.)));
     // Leg back
-    d = opUnion(d, sd_segment(pos, vec2(40., 30.), vec2(75., 80. + anim_1 * 10.)));
-    d = opUnion(d, sd_segment(pos, vec2(40., 30.), vec2(20., 30.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(40., 30.), vec2(75., 80. + anim_1 * 10.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(40., 30.), vec2(20., 30.)));
 
-    return sd_color_smooth(d - 3., mesh.instance_color.xyz);
+    return blend_colors(mesh, d_p, d_s);
+}
+
+fn blend_colors(mesh: VertexOutput, d_p: f32, d_s: f32) -> vec4<f32> {
+    let primary_color = sd_color_smooth(d_p - 3., mesh.instance_color_primary.xyz);
+    let secondary_color = sd_color_smooth(d_s - 3., mesh.instance_color_secondary.xyz);
+    let alpha = max(primary_color.a, secondary_color.a);
+    let color = select(secondary_color.rgb, primary_color.rgb, secondary_color.a < primary_color.a);
+    return vec4(color.r, color.g, color.b, alpha);
 }

@@ -8,7 +8,7 @@ use bevy::{
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
 use last_of_ants::{
-    components::ants::{Ant, AntPositionKind},
+    components::ants::{Ant, AntColorKind, AntPositionKind},
     render::render_ant::{AntMaterial, AntMaterialPlugin},
     ANT_SIZE,
 };
@@ -16,6 +16,7 @@ use rand::Rng;
 
 fn main() {
     App::new()
+        .insert_resource(ClearColor(Color::WHITE))
         .add_plugins((
             DefaultPlugins,
             AntMaterialPlugin,
@@ -65,6 +66,13 @@ fn setup(
         } else {
             material_top.clone()
         };
+        // let color_primary_kind = AntColorKind::YELLOW;
+        // let color_secondary_kind = AntColorKind::BLACK;
+        let color_primary_kind = AntColorKind::new_random(&mut rng);
+        let color_secondary_kind =
+            AntColorKind::new_random_from_primary(&mut rng, &color_primary_kind);
+        let color_primary = color_primary_kind.generate_color(&mut rng);
+        let color_secondary = color_secondary_kind.generate_color(&mut rng);
         commands.spawn((
             MaterialMesh2dBundle {
                 mesh: mesh.clone(),
@@ -88,7 +96,10 @@ fn setup(
                 direction,
                 current_wall: (Entity::PLACEHOLDER, GlobalTransform::default()),
                 scale,
-                color: Color::WHITE,
+                color_primary,
+                color_primary_kind,
+                color_secondary,
+                color_secondary_kind,
                 animation_phase: rng.gen::<f32>() * 2. * PI,
                 goal: 0,
             },

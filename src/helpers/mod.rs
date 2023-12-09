@@ -32,7 +32,10 @@ pub fn run_after(count: usize) -> impl FnMut(Local<usize>) -> bool + Clone {
     }
 }
 
-pub fn pause_if_not_focused(mut events: EventReader<WindowFocused>, mut time: ResMut<Time<Virtual>>) {
+pub fn pause_if_not_focused(
+    mut events: EventReader<WindowFocused>,
+    mut time: ResMut<Time<Virtual>>,
+) {
     for event in events.read() {
         if event.focused {
             time.unpause();

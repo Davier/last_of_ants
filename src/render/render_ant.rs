@@ -111,7 +111,9 @@ impl Material2d for AntMaterial {
         let mut instance_layout = VertexBufferLayout::from_vertex_formats(
             VertexStepMode::Instance,
             vec![
-                // color
+                // color_primary
+                VertexFormat::Float32x4,
+                // color_secondary
                 VertexFormat::Float32x4,
                 // phase
                 VertexFormat::Float32,
@@ -152,7 +154,8 @@ pub struct RenderAnt {
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pod, Zeroable, Component)]
 pub struct AntMaterialInstance {
-    color: Vec4,
+    color_primary: Vec4,
+    color_secondary: Vec4,
     animation_phase: f32,
     _padding: Vec3,
 }
@@ -167,7 +170,8 @@ impl ExtractComponent for RenderAnt {
     fn extract_component(ant: bevy::ecs::query::QueryItem<'_, Self::Query>) -> Option<Self::Out> {
         Some(Self {
             instance: AntMaterialInstance {
-                color: ant.color.into(),
+                color_primary: ant.color_primary.into(),
+                color_secondary: ant.color_secondary.into(),
                 animation_phase: ant.animation_phase,
                 _padding: Vec3::ZERO,
             },

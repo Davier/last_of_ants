@@ -2,7 +2,7 @@ use std::f32::consts::PI;
 
 use bevy::{ecs::system::EntityCommands, prelude::*, render::view::RenderLayers};
 use bevy_rapier2d::prelude::*;
-use rand::{Rng, random};
+use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
 
 use crate::{
     render::render_ant::{
@@ -36,23 +36,83 @@ pub struct Ant {
     pub speed: f32,
     /// TODO: Scaled is only used for rendering for now
     pub scale: f32,
-    pub color: Color,
+    pub color_primary: Color,
+    pub color_primary_kind: AntColorKind,
+    pub color_secondary: Color,
+    pub color_secondary_kind: AntColorKind,
     pub direction: Vec3,
     pub current_wall: (Entity, GlobalTransform), // FIXME: use relative transforms
     pub animation_phase: f32,
     pub goal: usize, // TODO turn into enum
 }
 
+/// Kind of color, used to give the player clues
+#[derive(Debug, Clone, Copy, Reflect)]
+pub enum AntColorKind {
+    BLACK,
+    RED,
+    BROWN,
+    GREEN,
+    YELLOW,
+}
+
+impl AntColorKind {
+    pub fn new_random(rng: &mut ThreadRng) -> Self {
+        *[
+            Self::BLACK,
+            Self::RED,
+            Self::BROWN,
+            Self::GREEN,
+            Self::YELLOW,
+        ]
+        .choose(rng)
+        .unwrap()
+    }
+
+    /// Not all colors are a good match
+    pub fn new_random_from_primary(rng: &mut ThreadRng, primary: &Self) -> Self {
+        *match primary {
+            AntColorKind::BLACK => [Self::RED, Self::BROWN, Self::GREEN].as_slice(),
+            AntColorKind::RED => [Self::BLACK, Self::RED, Self::BROWN].as_slice(),
+            AntColorKind::BROWN => [Self::BLACK, Self::RED, Self::BROWN].as_slice(),
+            AntColorKind::GREEN => [Self::BLACK, Self::GREEN, Self::YELLOW].as_slice(),
+            AntColorKind::YELLOW => [Self::BROWN, Self::GREEN, Self::YELLOW].as_slice(),
+        }
+        .choose(rng)
+        .unwrap()
+    }
+
+    pub fn generate_color(&self, rng: &mut ThreadRng) -> Color {
+        let shade = Vec3::from(rng.gen::<[f32; 3]>()) * 0.005; // TODO:cleanup
+        match self {
+            AntColorKind::BLACK => Color::rgb(shade.x, shade.x, shade.x),
+            AntColorKind::RED => Color::rgb(0.1 - shade.x, 0.001 + shade.y, shade.y),
+            AntColorKind::BROWN => {
+                let shade = Vec3::from(rng.gen::<[f32; 3]>()) * 0.03;
+                Color::rgb(0.15 + shade.x, 0.04 + shade.y, 0.02 + shade.z)
+            }
+            AntColorKind::GREEN => Color::rgb(shade.x, 0.06 - shade.y, shade.x),
+            AntColorKind::YELLOW => {
+                let shade = Vec3::from(rng.gen::<[f32; 3]>()) * 0.2;
+                Color::rgb(1. - shade.x, 0.6 - shade.y, 0.)
+            }
+        }
+    }
+}
+
 impl AntBundle {
+    #[allow(clippy::too_many_arguments)]
     pub fn new_on_nav_node(
         direction: Vec3,
         speed: f32,
         scale: f32,
-        color: Color,
+        color_primary_kind: AntColorKind,
+        color_secondary_kind: AntColorKind,
         nav_node_entity: Entity,
         nav_node: &NavNode,
         nav_node_pos: &GlobalTransform,
         entities_holder_pos: &GlobalTransform,
+        rng: &mut ThreadRng,
     ) -> Self {
         // FIXME: use common fn to place on walls?
         let mut transform = nav_node_pos.reparented_to(entities_holder_pos);
@@ -91,6 +151,8 @@ impl AntBundle {
             transform,
             ..default()
         };
+        let color_primary = color_primary_kind.generate_color(rng);
+        let color_secondary = color_secondary_kind.generate_color(rng);
         Self {
             ant: Ant {
                 position_kind,
@@ -98,8 +160,11 @@ impl AntBundle {
                 scale,
                 direction,
                 current_wall,
-                color,
-                animation_phase: random::<f32>() * 2. * PI, // FIXME: use thread rng
+                animation_phase: rng.gen::<f32>() * 2. * PI,
+                color_primary,
+                color_primary_kind,
+                color_secondary,
+                color_secondary_kind,
                 goal: PH1,
             },
             material,
@@ -122,22 +187,26 @@ impl AntBundle {
         direction: Vec3,
         speed: f32,
         scale: f32,
-        color: Color,
+        color_primary_kind: AntColorKind,
+        color_secondary_kind: AntColorKind,
         nav_node_entity: Entity,
         nav_node: &NavNode,
         nav_node_pos: &GlobalTransform,
         entities_holder: Entity,
         entities_holder_pos: &GlobalTransform,
+        rng: &mut ThreadRng,
     ) -> EntityCommands<'w, 's, 'c> {
         let mut command = commands.spawn(AntBundle::new_on_nav_node(
             direction,
             speed,
             scale,
-            color,
+            color_primary_kind,
+            color_secondary_kind,
             nav_node_entity,
             nav_node,
             nav_node_pos,
             entities_holder_pos,
+            rng,
         ));
         command.set_parent(entities_holder);
         command

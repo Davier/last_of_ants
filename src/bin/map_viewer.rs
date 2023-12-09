@@ -10,7 +10,7 @@ use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use itertools::Itertools;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, Ant, AntBundle},
+        ants::{debug_ants, Ant, AntBundle, AntColorKind},
         nav_mesh::{debug_nav_mesh, NavMeshLUT, NavNode},
         pheromons::{
             apply_sources, compute_gradients, diffuse_pheromons, PheromonGradients, PheromonSource,
@@ -128,21 +128,25 @@ fn spawn_ants_on_navmesh(
             rng.gen::<f32>() - 0.5,
         )
         .normalize();
+        let color_primary_kind = AntColorKind::new_random(&mut rng);
+        let color_secondary_kind =
+            AntColorKind::new_random_from_primary(&mut rng, &color_primary_kind);
         // let scale = rng.gen::<f32>() + 0.5;
         let scale = 1.; // TODO
         let speed = 40.;
-        let color = Color::ORANGE;
         AntBundle::spawn_on_nav_node(
             &mut commands,
             direction,
             speed,
             scale,
-            color,
+            color_primary_kind,
+            color_secondary_kind,
             nav_node_entity,
             nav_node,
             nav_node_pos,
             entities_holder,
             entities_holder_pos,
+            &mut rng,
         );
         // .insert(MovementGoal(_id));
     }
