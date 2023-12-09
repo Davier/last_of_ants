@@ -5,7 +5,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, AntBundle, AntColorKind},
+        ants::{debug_ants, LiveAntBundle, AntColorKind},
         nav_mesh::{debug_nav_mesh, NavNode},
         player::{update_player_sensor, Player},
     },
@@ -234,7 +234,7 @@ fn spawn_ants_on_navmesh(
         let speed = 40.;
         // let scale = rng.gen::<f32>() + 0.5;
         let scale = 1.; // TODO
-        AntBundle::spawn_on_nav_node(
+        LiveAntBundle::spawn_on_nav_node(
             &mut commands,
             direction,
             speed,

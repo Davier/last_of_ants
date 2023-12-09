@@ -10,7 +10,7 @@ use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use itertools::Itertools;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, Ant, AntBundle, AntColorKind},
+        ants::{debug_ants, LiveAntBundle, AntColorKind, LiveAnt},
         nav_mesh::{debug_nav_mesh, NavMeshLUT, NavNode},
         pheromons::{
             apply_sources, compute_gradients, diffuse_pheromons, PheromonGradients, PheromonSource,
@@ -91,7 +91,7 @@ struct TextCounters;
 fn update_text_counters(
     mut texts: Query<&mut Text, With<TextCounters>>,
     diagnostics: Res<DiagnosticsStore>,
-    ants: Query<(), With<Ant>>,
+    ants: Query<(), With<LiveAnt>>,
 ) {
     if let Some(fps) = diagnostics.get(FrameTimeDiagnosticsPlugin::FPS) {
         if let Some(ema) = fps.smoothed() {
@@ -134,7 +134,7 @@ fn spawn_ants_on_navmesh(
         // let scale = rng.gen::<f32>() + 0.5;
         let scale = 1.; // TODO
         let speed = 40.;
-        AntBundle::spawn_on_nav_node(
+        LiveAntBundle::spawn_on_nav_node(
             &mut commands,
             direction,
             speed,

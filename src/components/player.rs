@@ -10,7 +10,7 @@ use crate::{
 };
 
 use super::{
-    ants::{Ant, AntPositionKind},
+    ants::{AntMovement, AntPositionKind, AntStyle},
     dead_ants::DeadAntBundle,
     nav_mesh::NavNode,
 };
@@ -66,7 +66,7 @@ pub fn update_player_sensor(
     player_sensors: Query<(&PlayerWallSensor, &CollidingEntities)>,
     mut players: Query<&mut Player>,
     nav_nodes: Query<&NavNode>,
-    ants: Query<(&Ant, &Transform, &Parent)>,
+    ants: Query<(&AntMovement, &Transform, &Parent, &AntStyle)>,
 ) {
     for (sensor, colliding_entities) in player_sensors.iter() {
         let Ok(mut player) = players.get_mut(sensor.player) else {
@@ -79,11 +79,13 @@ pub fn update_player_sensor(
         player.on_ground.clear();
         player.on_wall.clear();
         for colliding_entity in colliding_entities.iter() {
-            if let Ok((ant, ant_transform, ant_parent)) = ants.get(colliding_entity) {
-                if !matches!(ant.position_kind, AntPositionKind::Background) {
+            if let Ok((ant_movement, ant_transform, ant_parent, ant_style)) =
+                ants.get(colliding_entity)
+            {
+                if !matches!(ant_movement.position_kind, AntPositionKind::Background) {
                     // Spawn a dead ant
                     commands
-                        .spawn(DeadAntBundle::new(*ant_transform))
+                        .spawn(DeadAntBundle::new(*ant_transform, *ant_style))
                         .set_parent(ant_parent.get());
                     // Despawn the alive ant
                     commands

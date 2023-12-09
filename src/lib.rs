@@ -6,7 +6,13 @@ use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers};
 use bevy_ecs_ldtk::{prelude::*, systems::process_ldtk_levels};
 use bevy_rapier2d::prelude::*;
 
-use components::{ants::*, nav_mesh::*, player::*, tiles::*, pheromons::{init_pheromons, PheromonSourceBundle}};
+use components::{
+    ants::*,
+    nav_mesh::*,
+    pheromons::{init_pheromons, PheromonSourceBundle},
+    player::*,
+    tiles::*,
+};
 use helpers::pause_if_not_focused;
 use render::render_ant::AntMaterialPlugin;
 
@@ -15,7 +21,7 @@ pub struct GamePlugin;
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.register_ldtk_entity::<PlayerBundle>("Player")
-        .register_ldtk_entity::<PheromonSourceBundle>("Source")
+            .register_ldtk_entity::<PheromonSourceBundle>("Source")
             // .register_ldtk_entity::<AntBundle>("Ant")
             .register_ldtk_int_cell::<TileGroundBundle>(TILE_INT_GROUND)
             .register_ldtk_int_cell::<TileEmptyUndergroundBundle>(TILE_INT_EMPTY)

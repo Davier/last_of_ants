@@ -8,7 +8,7 @@ use bevy::{
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
 use last_of_ants::{
-    components::ants::{Ant, AntColorKind, AntPositionKind},
+    components::ants::{AntColorKind, AntMovement, AntPositionKind, AntStyle, LiveAnt},
     render::render_ant::{AntMaterial, AntMaterialPlugin},
     ANT_SIZE,
 };
@@ -80,7 +80,8 @@ fn setup(
                 material,
                 ..default()
             },
-            Ant {
+            LiveAnt {},
+            AntMovement {
                 position_kind: if !is_side {
                     AntPositionKind::Background
                 } else if rng.gen_bool(0.5) {
@@ -95,20 +96,22 @@ fn setup(
                 speed: 30.,
                 direction,
                 current_wall: (Entity::PLACEHOLDER, GlobalTransform::default()),
+                goal: 0,
+            },
+            AntStyle {
                 scale,
                 color_primary,
                 color_primary_kind,
                 color_secondary,
                 color_secondary_kind,
                 animation_phase: rng.gen::<f32>() * 2. * PI,
-                goal: 0,
             },
         ));
     }
 }
 
 fn move_forward(
-    mut ants: Query<(&mut Ant, &mut Transform), With<Handle<AntMaterial>>>,
+    mut ants: Query<(&mut AntMovement, &mut Transform), With<Handle<AntMaterial>>>,
     time: Res<Time>,
     inputs: Res<Input<KeyCode>>,
 ) {

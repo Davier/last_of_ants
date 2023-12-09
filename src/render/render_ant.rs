@@ -3,7 +3,7 @@
 use std::{f32::consts::PI, ops::DerefMut};
 
 use crate::{
-    components::ants::{Ant, AntPositionKind},
+    components::ants::{AntMovement, AntPositionKind, AntStyle},
     ANT_SIZE,
 };
 use bevy::{
@@ -161,18 +161,20 @@ pub struct AntMaterialInstance {
 }
 
 impl ExtractComponent for RenderAnt {
-    type Query = Read<Ant>;
+    type Query = Read<AntStyle>;
 
     type Filter = ();
 
     type Out = Self;
 
-    fn extract_component(ant: bevy::ecs::query::QueryItem<'_, Self::Query>) -> Option<Self::Out> {
+    fn extract_component(
+        ant_style: bevy::ecs::query::QueryItem<'_, Self::Query>,
+    ) -> Option<Self::Out> {
         Some(Self {
             instance: AntMaterialInstance {
-                color_primary: ant.color_primary.into(),
-                color_secondary: ant.color_secondary.into(),
-                animation_phase: ant.animation_phase,
+                color_primary: ant_style.color_primary.into(),
+                color_secondary: ant_style.color_secondary.into(),
+                animation_phase: ant_style.animation_phase,
                 _padding: Vec3::ZERO,
             },
         })
@@ -202,7 +204,7 @@ pub fn prepare_ant_material(
 }
 
 pub fn extract_ants_render_transform(
-    mut ants: Extract<Query<(Entity, &Ant, &ViewVisibility)>>,
+    mut ants: Extract<Query<(Entity, &AntMovement, &ViewVisibility)>>,
     mut meshes: ResMut<RenderMesh2dInstances>,
 ) {
     let meshes = meshes.deref_mut().deref_mut();

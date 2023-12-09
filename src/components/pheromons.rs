@@ -8,7 +8,7 @@ pub const PH2: usize = 1;
 pub const N_PH: usize = 2;
 pub const PH_EVAPORATION_RATE: [f32; N_PH] = [0.005; N_PH];
 pub const PH_DIFFUSION_RATE: [f32; N_PH] = [0.3, 0.03];
-pub const PH_DIFFUSION_FLOOR: [f32; N_PH] = [0.001,0.002];
+pub const PH_DIFFUSION_FLOOR: [f32; N_PH] = [0.001, 0.002];
 pub const PH_FLOOR: [f32; N_PH] = [0.001, 0.005];
 
 #[derive(Bundle)]

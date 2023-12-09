@@ -6,12 +6,15 @@ use crate::{
     RENDERLAYER_ANTS,
 };
 
+use super::ants::AntStyle;
+
 #[derive(Debug, Component, Reflect)]
 pub struct DeadAnt;
 
 #[derive(Bundle)]
 pub struct DeadAntBundle {
     pub dead_ant: DeadAnt,
+    pub ant_style: AntStyle,
     pub sprite: SpriteBundle,
     pub rigid_body: RigidBody,
     pub collider: Collider,
@@ -22,9 +25,10 @@ pub struct DeadAntBundle {
 }
 
 impl DeadAntBundle {
-    pub fn new(ant_transform: Transform) -> Self {
+    pub fn new(ant_transform: Transform, ant_style: AntStyle) -> Self {
         Self {
             dead_ant: DeadAnt,
+            ant_style,
             sprite: SpriteBundle {
                 sprite: Sprite {
                     color: Color::RED,
