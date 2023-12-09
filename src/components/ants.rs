@@ -15,7 +15,7 @@ use crate::{
 
 use super::{
     nav_mesh::NavNode,
-    pheromons::{PheromonsGradients, PH1},
+    pheromons::{PheromonsGradients, DEFAULT},
 };
 
 #[derive(Bundle)]
@@ -173,7 +173,7 @@ impl LiveAntBundle {
                 speed,
                 direction,
                 current_wall,
-                goal: PH1,
+                goal: DEFAULT,
             },
             ant_style: AntStyle {
                 scale,

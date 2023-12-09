@@ -14,7 +14,7 @@ use last_of_ants::{
         nav_mesh::{debug_nav_mesh, NavNode},
         pheromons::{
             apply_sources, compute_gradients, diffuse_pheromons, Pheromons, PheromonsGradients,
-            PheromonsSource, SourceCoord, PH1, PH2,
+            DEFAULT, FOOD_SOURCE, FOOD_STORE,
         },
         zombants::spawn_zombant_queen,
     },
@@ -39,7 +39,6 @@ fn main() {
         .add_systems(
             Update,
             (
-                debug_sources,
                 spawn_ants_on_navmesh.run_if(on_key_just_pressed(KeyCode::Space)),
                 // move_ants_on_mesh,
                 debug_nav_mesh.run_if(toggle_on_key(KeyCode::N)),
@@ -262,54 +261,56 @@ fn debug_pheromons(
         gizmos.circle_2d(closest.1, 0.5, Color::RED);
         gizmos.ray_2d(
             cursor_world_position,
-            closest.4.gradients[PH1],
+            closest.4.gradients[DEFAULT],
             Color::ALICE_BLUE,
         );
 
         if buttons.pressed(MouseButton::Left) {
-            closest.3.concentrations[PH1] += 1.;
+            closest.3.concentrations[DEFAULT] += 1.;
         } else if buttons.pressed(MouseButton::Right) {
-            closest.3.concentrations[PH2] += 1.;
+            closest.3.concentrations[FOOD_STORE] += 1.;
         }
     }
 
     for (e, n, ph, g) in query_nodes.iter() {
         let t = query_transform.get(e).unwrap();
-        gizmos.circle_2d(t.translation().xy(), ph.concentrations[PH1], Color::PINK);
-        gizmos.ray_2d(t.translation().xy(), g.gradients[PH1] * 2.0, Color::BLUE);
-        gizmos.circle_2d(
-            t.translation().xy(),
-            ph.concentrations[PH2],
-            Color::YELLOW_GREEN,
-        );
-        gizmos.ray_2d(t.translation().xy(), g.gradients[PH2] * 2.0, Color::YELLOW);
-    }
-}
-
-fn debug_sources(
-    mut commands: Commands,
-    sources: Query<(&PheromonsSource, &SourceCoord)>,
-    nav_mesh_lut: Res<NavMeshLUT>,
-    transforms: Query<&GlobalTransform, With<NavNode>>,
-) {
-    if nav_mesh_lut.is_changed() {
-        for (
-            PheromonsSource {
-                concentrations: value,
-            },
-            SourceCoord { x, y },
-        ) in sources.iter()
-        {
-            let (node_id, idx) = nav_mesh_lut
-                .get_tile_entity_grid(*x as usize, *y as usize)
-                .unwrap();
-            let node = transforms.get(node_id).unwrap();
-            commands
-                .get_entity(node_id)
-                .unwrap()
-                .insert(PheromonsSource {
-                    concentrations: *value,
-                });
+        if ph.concentrations[DEFAULT] > 0. {
+            gizmos.circle_2d(
+                t.translation().xy(),
+                ph.concentrations[DEFAULT].max(0.1),
+                Color::PINK,
+            );
         }
+        gizmos.ray_2d(
+            t.translation().xy(),
+            g.gradients[DEFAULT] * 2.0,
+            Color::BLUE,
+        );
+
+        if ph.concentrations[FOOD_STORE] > 0. {
+            gizmos.circle_2d(
+                t.translation().xy(),
+                ph.concentrations[FOOD_STORE].max(0.1),
+                Color::YELLOW_GREEN,
+            );
+        }
+        gizmos.ray_2d(
+            t.translation().xy(),
+            g.gradients[FOOD_STORE] * 2.0,
+            Color::YELLOW,
+        );
+
+        if ph.concentrations[FOOD_SOURCE] > 0. {
+            gizmos.circle_2d(
+                t.translation().xy(),
+                ph.concentrations[FOOD_SOURCE].max(0.1),
+                Color::ORANGE,
+            );
+        }
+        gizmos.ray_2d(
+            t.translation().xy(),
+            g.gradients[FOOD_SOURCE] * 2.0,
+            Color::ORANGE_RED,
+        );
     }
 }

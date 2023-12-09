@@ -5,7 +5,7 @@ pub mod resources;
 pub mod ui;
 
 use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers};
-use bevy_ecs_ldtk::{prelude::*, systems::process_ldtk_levels};
+use bevy_ecs_ldtk::{prelude::*, systems::fire_level_transformed_events};
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 
@@ -14,7 +14,8 @@ use components::{
     clues::place_clues,
     cocoons::CocoonBundle,
     nav_mesh::*,
-    pheromons::{init_pheromons, PheromonSourceBundle, PheromonsConfig},
+    pheromon_source::ObjectBundle,
+    pheromons::{init_pheromons, init_sources, PheromonsConfig},
     player::*,
     tiles::*,
     zombants::ZombAntQueenSpawnPoint,
@@ -33,6 +34,7 @@ impl Plugin for GamePlugin {
         app.register_ldtk_entity::<PlayerBundle>("Player")
             .register_ldtk_entity::<PheromonSourceBundle>("Source")
             .register_ldtk_entity::<CocoonBundle>("Shedding")
+            .register_ldtk_entity::<ObjectBundle>("Source")
             // .register_ldtk_entity::<AntBundle>("Ant")
             .register_ldtk_entity::<ZombAntQueenSpawnPoint>("Zombant_Queen_Spawn_Point")
             .register_ldtk_int_cell::<TileGroundBundle>(TILE_INT_GROUND)
@@ -54,10 +56,10 @@ impl Plugin for GamePlugin {
             .add_systems(
                 PreUpdate,
                 (
-                    spawn_nav_mesh,
-                    init_pheromons.after(spawn_nav_mesh),
                     place_clues,
                     pause_if_not_focused,
+                    init_pheromons,
+                    init_sources.after(init_pheromons), // FIXME doesn't always load in the right order?
                 ),
             )
             .add_systems(
@@ -75,6 +77,10 @@ impl Plugin for GamePlugin {
                     )
                         .chain(),
                 ),
+            )
+            .add_systems(
+                PostUpdate,
+                (spawn_nav_mesh.after(fire_level_transformed_events),),
             );
     }
 }
