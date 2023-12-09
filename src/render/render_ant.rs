@@ -37,6 +37,8 @@ use bevy::{
 };
 use bytemuck::{Pod, Zeroable};
 
+use super::render_cocoon::CocoonMaterial;
+
 pub struct AntMaterialPlugin;
 impl Plugin for AntMaterialPlugin {
     fn build(&self, app: &mut App) {
@@ -152,7 +154,7 @@ pub struct RenderAnt {
 }
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, Pod, Zeroable, Component)]
+#[derive(Debug, Default, Copy, Clone, Pod, Zeroable, Component)]
 pub struct AntMaterialInstance {
     color_primary: Vec4,
     color_secondary: Vec4,
@@ -194,6 +196,13 @@ pub fn prepare_ant_material(
             if item.draw_function == AntMaterial::draw_function_id(&draw_functions) {
                 let ant = ants.get(item.entity).unwrap();
                 ant_material_meta.instances.push(ant.instance);
+            } else if item.draw_function == CocoonMaterial::draw_function_id(&draw_functions) {
+                // All other Material2d share the same vertex buffer 0, so we need to add a
+                // placeholder entry in the instance buffer...
+                // TODO: is there another way?
+                ant_material_meta
+                    .instances
+                    .push(AntMaterialInstance::default());
             }
         }
     }

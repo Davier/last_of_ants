@@ -1,42 +1,6 @@
 #import bevy_sprite::mesh2d_functions
 #import bevy_sprite::mesh2d_view_bindings::{view, globals}
 
-// TODO: credits 
-
-fn sd_circle(pos: vec2<f32>, radius: f32) -> f32 {
-    return length(pos) - radius;
-}
-
-fn sd_box(pos: vec2<f32>, size: vec2<f32>) -> f32 {
-    let dist = abs(pos) - size;
-    return length(max(dist, vec2(0.0))) + min(max(dist.x, dist.y), 0.0);
-}
-
-fn sd_segment(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
-    let pa = p - a;
-    let ba = b - a;
-    let h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-    return length(pa - ba * h);
-}
-
-fn sd_rounded_box(pos: vec2<f32>, size: vec2<f32>, radius: f32) -> f32 {
-    let q = abs(pos) - size + radius;
-    return min(max(q.x, q.y), 0.0) + length(max(q, vec2(0.0))) - radius;
-}
-
-fn opUnion(d1: f32, d2: f32) -> f32 {
-    return min(d1, d2);
-}
-fn opSubtraction(d1: f32, d2: f32) -> f32 {
-    return max(-d1, d2);
-}
-fn opIntersection(d1: f32, d2: f32) -> f32 {
-    return max(d1, d2);
-}
-fn opXor(d1: f32, d2: f32) -> f32 {
-    return max(min(d1, d2), -max(d1, d2));
-}
-
 struct Vertex {
     @builtin(instance_index) instance_index: u32,
 #ifdef VERTEX_POSITIONS
@@ -125,51 +89,6 @@ fn fragment(
     }
 }
 
-fn rotate(pos: vec2<f32>, angle: f32) -> vec2<f32> {
-    let c = cos(angle);
-    let s = sin(angle);
-    let rot = mat2x2(c, s, -s, c);
-    return rot * pos;
-}
-
-fn sd_color_sharp(d: f32, color: vec3<f32>) -> vec4<f32> {
-    return vec4(color, step(0., -d));
-}
-
-fn sd_color_smooth(d: f32, color: vec3<f32>) -> vec4<f32> {
-    let alpha = min(1.0, pow(1.0 - d / 400., 400.));
-    return vec4(color, alpha);
-}
-
-
-fn sd_color_border(d: f32, color: vec3<f32>) -> vec4<f32> {
-    let border = 5.; //px
-    let border_color = vec3(0.5);
-    let new_color = select(color, border_color, abs(d) <= border);
-    return vec4(new_color, step(-border, -d));
-}
-
-
-fn sd_color_border_highlighted(d: f32, color: vec3<f32>, color_highlight: vec3<f32>, distance_cursor: f32) -> vec4<f32> {
-    let border = 5.; //px
-    let border_color = mix(vec3(0.5), color_highlight, 1. - distance_cursor);
-    let new_color = select(color, border_color, abs(d) <= border);
-    // return vec4(new_color, step(-border, -d)); // Symmetric border
-    return vec4(new_color, step(0., -d)); // Inward border
-}
-
-fn sd_color_debug(d: f32, color: vec3<f32>) -> vec4<f32> {
-	// coloring
-    var col = vec3(0.65, 0.85, 1.0);
-    if d > 0. {
-        col = vec3(0.9, 0.6, 0.3);
-    }
-    col *= 1.0 - exp(-0.05 * abs(d));
-    col *= 0.8 + 0.2 * cos(2. * 3.1415 * d / 10.);
-    col = mix(col, vec3(1.0), 1.0 - smoothstep(0.0, 2., abs(d)));
-
-    return vec4(col, 1.0);
-}
 
 @group(1) @binding(0) var<uniform> material_is_side: u32;
 
@@ -239,4 +158,79 @@ fn blend_colors(mesh: VertexOutput, d_p: f32, d_s: f32) -> vec4<f32> {
     let alpha = max(primary_color.a, secondary_color.a);
     let color = select(secondary_color.rgb, primary_color.rgb, secondary_color.a < primary_color.a);
     return vec4(color.r, color.g, color.b, alpha);
+}
+
+fn sd_color_sharp(d: f32, color: vec3<f32>) -> vec4<f32> {
+    return vec4(color, step(0., -d));
+}
+
+fn sd_color_smooth(d: f32, color: vec3<f32>) -> vec4<f32> {
+    let alpha = min(1.0, pow(1.0 - d / 400., 400.));
+    return vec4(color, alpha);
+}
+
+fn sd_color_border(d: f32, color: vec3<f32>) -> vec4<f32> {
+    let border = 5.; //px
+    let border_color = vec3(0.5);
+    let new_color = select(color, border_color, abs(d) <= border);
+    return vec4(new_color, step(-border, -d));
+}
+
+fn sd_color_debug(d: f32, color: vec3<f32>) -> vec4<f32> {
+	// coloring
+    var col = vec3(0.65, 0.85, 1.0);
+    if d > 0. {
+        col = vec3(0.9, 0.6, 0.3);
+    }
+    col *= 1.0 - exp(-0.05 * abs(d));
+    col *= 0.8 + 0.2 * cos(2. * 3.1415 * d / 10.);
+    col = mix(col, vec3(1.0), 1.0 - smoothstep(0.0, 2., abs(d)));
+
+    return vec4(col, 1.0);
+}
+
+fn rotate(pos: vec2<f32>, angle: f32) -> vec2<f32> {
+    let c = cos(angle);
+    let s = sin(angle);
+    let rot = mat2x2(c, s, -s, c);
+    return rot * pos;
+}
+
+// TODO: credits https://iquilezles.org/articles/distfunctions2d/
+
+fn sd_circle(pos: vec2<f32>, radius: f32) -> f32 {
+    return length(pos) - radius;
+}
+
+fn sd_box(pos: vec2<f32>, size: vec2<f32>) -> f32 {
+    let dist = abs(pos) - size;
+    return length(max(dist, vec2(0.0))) + min(max(dist.x, dist.y), 0.0);
+}
+
+fn sd_segment(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
+    let pa = p - a;
+    let ba = b - a;
+    let h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+    return length(pa - ba * h);
+}
+
+fn sd_rounded_box(pos: vec2<f32>, size: vec2<f32>, radius: f32) -> f32 {
+    let q = abs(pos) - size + radius;
+    return min(max(q.x, q.y), 0.0) + length(max(q, vec2(0.0))) - radius;
+}
+
+fn opUnion(d1: f32, d2: f32) -> f32 {
+    return min(d1, d2);
+}
+
+fn opSubtraction(d1: f32, d2: f32) -> f32 {
+    return max(-d1, d2);
+}
+
+fn opIntersection(d1: f32, d2: f32) -> f32 {
+    return max(d1, d2);
+}
+
+fn opXor(d1: f32, d2: f32) -> f32 {
+    return max(min(d1, d2), -max(d1, d2));
 }

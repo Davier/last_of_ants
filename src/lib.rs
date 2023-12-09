@@ -11,10 +11,11 @@ use components::{
     nav_mesh::*,
     pheromons::{init_pheromons, PheromonSourceBundle},
     player::*,
+    cocoons::{CocoonBundle, place_clues},
     tiles::*,
 };
 use helpers::pause_if_not_focused;
-use render::render_ant::AntMaterialPlugin;
+use render::{render_ant::AntMaterialPlugin, render_cocoon::CocoonMaterialPlugin};
 
 pub struct GamePlugin;
 
@@ -22,6 +23,7 @@ impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.register_ldtk_entity::<PlayerBundle>("Player")
             .register_ldtk_entity::<PheromonSourceBundle>("Source")
+            .register_ldtk_entity::<CocoonBundle>("Shedding")
             // .register_ldtk_entity::<AntBundle>("Ant")
             .register_ldtk_int_cell::<TileGroundBundle>(TILE_INT_GROUND)
             .register_ldtk_int_cell::<TileEmptyUndergroundBundle>(TILE_INT_EMPTY)
@@ -33,12 +35,14 @@ impl Plugin for GamePlugin {
                 LdtkPlugin,
                 RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(PIXELS_PER_METER),
                 AntMaterialPlugin,
+                CocoonMaterialPlugin,
             ))
             .add_systems(
                 PreUpdate,
                 (
-                    spawn_nav_mesh.after(process_ldtk_levels),
+                    spawn_nav_mesh,
                     init_pheromons.after(spawn_nav_mesh),
+                    place_clues,
                     pause_if_not_focused,
                 ),
             )
@@ -71,6 +75,10 @@ pub const ANT_WALL_CLIPPING: f32 = 0.5;
 pub const TILE_INT_GROUND: i32 = 1;
 pub const TILE_INT_EMPTY: i32 = 2;
 pub const TILE_SIZE: f32 = 16.;
+
+pub const COCOON_ROOMS: &[u8] = &[0, 1, 2];
+/// Should be less than ROOMS.len()
+pub const CLUES_NUMBER: usize = 2;
 
 pub const COLLISION_GROUP_WALLS: Group = Group::GROUP_1;
 pub const COLLISION_GROUP_PLAYER: Group = Group::GROUP_2;
