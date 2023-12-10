@@ -101,9 +101,7 @@ impl AntMaterial {
             flags |= ANT_MATERIAL_FLAG_HAS_HALO;
         }
         dbg!(flags);
-        Self {
-            flags,
-        }
+        Self { flags }
     }
 }
 

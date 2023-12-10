@@ -5,9 +5,9 @@ use bevy_rapier2d::geometry::{Collider, CollisionGroups};
 use itertools::Itertools;
 
 use crate::{
-    resources::nav_mesh_lut::NavMeshLUT, COLLISION_GROUP_ANTS, COLLISION_GROUP_DEAD_ANTS,
-    COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, TILE_INT_EMPTY,
-    TILE_INT_GROUND, TILE_INT_OVERGROUND, WALL_Z_FACTOR, ANT_WALL_CLIPPING,
+    resources::nav_mesh_lut::NavMeshLUT, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS,
+    COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
+    COLLISION_GROUP_WALLS, TILE_INT_EMPTY, TILE_INT_GROUND, TILE_INT_OVERGROUND, WALL_Z_FACTOR,
 };
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
@@ -553,7 +553,7 @@ pub fn spawn_nav_mesh(
                 ),
             );
         }
-        
+
         // Insert the bundles
         commands.insert_or_spawn_batch(entities_bundle);
 

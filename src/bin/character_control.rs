@@ -5,13 +5,16 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, AntColorKind, LiveAntBundle, goal::AntGoal},
+        ants::{debug_ants, goal::AntGoal, AntColorKind, LiveAntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
         player::{update_player_sensor, Player},
         zombants::spawn_zombant_queen,
     },
     helpers::{on_key_just_pressed, run_after, toggle_on_key, toggle_physics_debug},
-    render::{MainCamera2d, MainCamera2dBundle},
+    render::{
+        player_animation::{PlayerAnimation, PlayerAnimationState},
+        MainCamera2d, MainCamera2dBundle,
+    },
     ui::ui_clues::UiCluesPlugin,
     GamePlugin, TILE_SIZE,
 };
@@ -70,6 +73,7 @@ fn player_movement(
     mut last_time_on_right_wall: Local<f32>,
     mut last_time_on_ground: Local<f32>,
     mut jump_available: Local<bool>,
+    mut animations: Query<&mut PlayerAnimation>,
 ) {
     let Ok((mut controller, mut velocity, player, controller_output)) = players.get_single_mut()
     else {
@@ -118,6 +122,8 @@ fn player_movement(
     let v = &mut velocity.linvel;
     // info!("{:5?} | {:?}", is_on_ground, is_on_wall);
 
+    let mut animation = animations.single_mut();
+
     // Slow down if shift is pressed
     if shift_pressed {
         walk_speed *= 0.5;
@@ -155,25 +161,39 @@ fn player_movement(
         && (is_on_ground_recently || is_on_left_wall_recently || is_on_right_wall_recently)
     {
         v.x = walk_speed;
+        animation.is_facing_right = true;
+        if matches!(animation.state, PlayerAnimationState::Standing) {
+            animation.set_state(PlayerAnimationState::Running);
+        }
     };
     if left_pressed
         && (is_on_ground_recently || is_on_left_wall_recently || is_on_right_wall_recently)
     {
         v.x = -walk_speed;
+        animation.is_facing_right = false;
+        if matches!(animation.state, PlayerAnimationState::Standing) {
+            animation.set_state(PlayerAnimationState::Running);
+        }
     };
+    if !left_pressed && !right_pressed && matches!(animation.state, PlayerAnimationState::Running) {
+        animation.set_state(PlayerAnimationState::Standing);
+    }
     if space_pressed && *jump_available {
         if is_on_ground {
             v.y = jump_impulse;
             *jump_available = false;
+            animation.set_state(PlayerAnimationState::Jumping);
         } else if is_on_left_wall_recently && right_pressed {
             v.y = jump_impulse;
             v.x = jump_impulse / 3.;
             *jump_available = false;
+            animation.set_state(PlayerAnimationState::Jumping);
             // info!("Wall jump left");
         } else if is_on_right_wall_recently && left_pressed {
             v.y = jump_impulse;
             v.x = -jump_impulse / 3.;
             *jump_available = false;
+            animation.set_state(PlayerAnimationState::Jumping);
             // info!("Wall jump right");
         }
     }

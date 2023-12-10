@@ -5,9 +5,9 @@ use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    resources::clues::ClueEvent, COLLISION_GROUP_ANTS, COLLISION_GROUP_CLUE,
-    COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
-    COLLISION_GROUP_WALLS, PLAYER_SIZE, RENDERLAYER_PLAYER,
+    render::player_animation::PlayerAnimationBundle, resources::clues::ClueEvent,
+    COLLISION_GROUP_ANTS, COLLISION_GROUP_CLUE, COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER,
+    COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, PLAYER_SIZE, RENDERLAYER_PLAYER,
 };
 
 use super::{
@@ -17,10 +17,10 @@ use super::{
     nav_mesh::NavNode,
 };
 
-#[derive(Bundle, LdtkEntity)]
+#[derive(Bundle)]
 pub struct PlayerBundle {
     pub player: Player,
-    pub sprite: SpriteBundle,
+    pub animation: PlayerAnimationBundle,
     pub controller: KinematicCharacterController,
     pub collider: Collider,
     pub collider_mass: ColliderMassProperties,
@@ -29,18 +29,18 @@ pub struct PlayerBundle {
     pub render_layers: RenderLayers,
 }
 
-impl Default for PlayerBundle {
-    fn default() -> Self {
+impl LdtkEntity for PlayerBundle {
+    fn bundle_entity(
+        _entity_instance: &EntityInstance,
+        _layer_instance: &LayerInstance,
+        _tileset: Option<&Handle<Image>>,
+        _tileset_definition: Option<&TilesetDefinition>,
+        asset_server: &AssetServer,
+        texture_atlases: &mut Assets<TextureAtlas>,
+    ) -> Self {
         Self {
-            sprite: SpriteBundle {
-                sprite: Sprite {
-                    color: Color::GREEN,
-                    custom_size: Some(PLAYER_SIZE),
-                    ..default()
-                },
-                ..default()
-            },
-            collider: Collider::cuboid(PLAYER_SIZE.x / 2., PLAYER_SIZE.y / 2.),
+            animation: PlayerAnimationBundle::new(asset_server, texture_atlases),
+            collider: Collider::cuboid(PLAYER_SIZE.x / 2. - 2., PLAYER_SIZE.y / 2.),
             collider_mass: ColliderMassProperties::Density(1.),
             player: Default::default(),
             controller: KinematicCharacterController {

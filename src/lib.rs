@@ -24,7 +24,10 @@ use components::{
     zombants::ZombAntQueenSpawnPoint,
 };
 use helpers::pause_if_not_focused;
-use render::{render_ant::AntMaterialPlugin, render_cocoon::CocoonMaterialPlugin};
+use render::{
+    player_animation::PlayerAnimationPlugin, render_ant::AntMaterialPlugin,
+    render_cocoon::CocoonMaterialPlugin,
+};
 use resources::{
     clues::{clues_receive_events, ClueEvent, Clues},
     nav_mesh_lut::NavMeshLUT,
@@ -55,6 +58,7 @@ impl Plugin for GamePlugin {
                 RapierPhysicsPlugin::<NoUserData>::pixels_per_meter(PIXELS_PER_METER),
                 AntMaterialPlugin,
                 CocoonMaterialPlugin,
+                PlayerAnimationPlugin,
             ))
             .add_plugins((
                 ResourceInspectorPlugin::<PheromonsConfig>::default(),
@@ -95,7 +99,7 @@ impl Plugin for GamePlugin {
 }
 
 pub const PIXELS_PER_METER: f32 = 16.;
-pub const PLAYER_SIZE: Vec2 = Vec2::new(8., 16.);
+pub const PLAYER_SIZE: Vec2 = Vec2::new(16., 20.);
 pub const ANT_SIZE: Vec2 = Vec2::new(16., 16.);
 /// Vertical and horizontal edges will have their [NavNode] placed at `tile_size * WALL_Z_FACTOR / 2.` in Z
 pub const WALL_Z_FACTOR: f32 = 1.;

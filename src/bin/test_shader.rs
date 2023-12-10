@@ -8,7 +8,9 @@ use bevy::{
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
 use last_of_ants::{
-    components::ants::{AntColorKind, AntMovement, AntPositionKind, AntStyle, LiveAnt, goal::AntGoal},
+    components::ants::{
+        goal::AntGoal, AntColorKind, AntMovement, AntPositionKind, AntStyle, LiveAnt,
+    },
     render::render_ant::{AntMaterial, AntMaterialPlugin},
     ANT_SIZE,
 };
