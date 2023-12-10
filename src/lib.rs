@@ -10,7 +10,10 @@ use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 
 use components::{
-    ants::*,
+    ants::{
+        goal::{update_metrics, Metrics},
+        *,
+    },
     clues::place_clues,
     cocoons::CocoonBundle,
     nav_mesh::*,
@@ -44,6 +47,7 @@ impl Plugin for GamePlugin {
             .init_resource::<NavMeshLUT>()
             .add_event::<ClueEvent>()
             .init_resource::<PheromonsConfig>()
+            .init_resource::<Metrics>()
             .add_plugins((
                 DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites? (TODO: test)
                 LdtkPlugin,
@@ -51,7 +55,10 @@ impl Plugin for GamePlugin {
                 AntMaterialPlugin,
                 CocoonMaterialPlugin,
             ))
-            .add_plugins(ResourceInspectorPlugin::<PheromonsConfig>::default())
+            .add_plugins((
+                ResourceInspectorPlugin::<PheromonsConfig>::default(),
+                ResourceInspectorPlugin::<Metrics>::default(),
+            ))
             .add_systems(
                 PreUpdate,
                 (
@@ -74,6 +81,7 @@ impl Plugin for GamePlugin {
                         // update_ant_direction_randomly,
                         update_ant_position,
                         update_ant_goal,
+                        update_metrics,
                     )
                         .chain(),
                 ),

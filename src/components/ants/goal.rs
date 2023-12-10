@@ -42,3 +42,18 @@ impl AntGoal {
         *direction *= -1.;
     }
 }
+
+#[derive(Resource, Default, Reflect)]
+pub struct Metrics {
+    pub food: f32,
+}
+
+pub fn update_metrics(mut metrics: ResMut<Metrics>, objects: Query<&Object>) {
+    metrics.food = 0.;
+    for object in objects.iter() {
+        match object.kind {
+            ObjectKind::Storage => metrics.food += object.quantity.unwrap_or_default(),
+            _ => (),
+        }
+    }
+}

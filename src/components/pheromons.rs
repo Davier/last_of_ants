@@ -1,12 +1,9 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::LevelEvent;
 
-use crate::components::object::ObjectCoords;
+use crate::{components::object::ObjectCoords, resources::nav_mesh_lut::NavMeshLUT};
 
-use super::{
-    nav_mesh::{NavMeshLUT, NavNode},
-    object::Object,
-};
+use super::{nav_mesh::NavNode, object::Object};
 
 pub const DEFAULT: usize = 0;
 pub const FOOD_STORE: usize = 1;
@@ -26,7 +23,7 @@ impl Default for PheromonsConfig {
     fn default() -> Self {
         Self {
             evaporation_rate: [0.005; N],
-            diffusion_rate: [0.01, 0.4, 0.3, 0.01, 0.01, 0.01],
+            diffusion_rate: [0.01, 0.4, 0.4, 0.01, 0.01, 0.01],
             diffusion_floor: [0.001; N],
             concentration_floor: [0.001; N],
         }
