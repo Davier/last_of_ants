@@ -322,6 +322,8 @@ pub fn update_ant_position_kinds(
                         // On the surface, the ant cannot go to the background
                         ant_transform.translation.z = 0.;
                     }
+                    //ant_movement.direction.y = if is_up_side { -1.0 } else { 1.0 };
+                    //place_ant_on_background(&mut ant_movement, &mut ant_transform);
                 }
                 // Check the closest colliding wall
                 else if let Some((nav_node_entity, nav_node, wall_transform_global)) =
@@ -520,6 +522,66 @@ pub fn assert_ants(
     }
 }
 
+pub fn update_ant_goal(
+    //commands: &mut Commands,
+    mut ants: Query<&mut AntMovement>,
+    mut objects: Query<(Entity, &mut Object), With<NavNode>>,
+) {
+    for mut ant_movement in ants.iter_mut() {
+        if let Ok((object_id, mut object)) = objects.get_mut(ant_movement.current_node.0) {
+            if object.kind == ant_movement.goal.kind {
+                ant_movement.step_goal(/*commands,*/ object_id, &mut object)
+            }
+        }
+    }
+}
+
+/// Calculate desired direction of ants according to the gradient of the current node
+pub fn update_ant_direction(
+    mut ants: Query<&mut AntMovement>,
+    gradients: Query<&PheromonsGradients>,
+) {
+    let mut rng = rand::thread_rng();
+
+    for mut ant_movement in ants.iter_mut() {
+        let closest_gradient = gradients.get(ant_movement.current_node.0).unwrap();
+
+        // the gradient for the pheromon the ant follows is not null: follow it
+        let random = rng.gen_range(0.0..1.0);
+        let goal_gradient = closest_gradient.gradients[ant_movement.goal.kind as usize];
+        if goal_gradient != Vec3::ZERO {
+            // TODO randomize a bit the direction
+            ant_movement.direction = goal_gradient;
+        } else {
+            match ant_movement.position_kind {
+                AntPositionKind::Background => {
+                    if 0.01 > random {
+                        ant_movement.direction =
+                            Quat::from_rotation_z(rng.gen_range(-(PI / 2.)..(PI / 2.)))
+                                * ant_movement.direction;
+                    } else if 0.1 > random {
+                        ant_movement.direction =
+                            Quat::from_rotation_z(rng.gen_range(-(PI / 6.)..(PI / 6.)))
+                                * ant_movement.direction;
+                    }
+                }
+                AntPositionKind::VerticalWall { .. } => {
+                    ant_movement.direction =
+                        Quat::from_rotation_x(rng.gen_range(-(PI / 6.)..(PI / 6.)))
+                            * ant_movement.direction;
+                }
+                AntPositionKind::HorizontalWall { .. } => {
+                    ant_movement.direction =
+                        Quat::from_rotation_y(rng.gen_range(-(PI / 6.)..(PI / 6.)))
+                            * ant_movement.direction;
+                }
+            }
+        }
+
+        debug!("ant direction {:?}", ant_movement.direction)
+    }
+}
+
 pub fn update_ant_direction_randomly(mut ants: Query<&mut AntMovement>, time: Res<Time>) {
     let mut rng = rand::thread_rng();
     let dt = time.delta_seconds_f64();
@@ -583,6 +645,8 @@ pub fn update_ant_position(
             0.,
             (nav_mesh_lut.tile_height * nav_mesh_lut.grid_height) as f32,
         );
+
+        debug!("ant position {:?}", ant_transform.translation);
     }
 }
 
@@ -628,6 +692,8 @@ fn place_ant_on_horizontal_wall(
 ) {
     // Change position kind
     ant_movement.position_kind = AntPositionKind::HorizontalWall { is_up_side };
+    // Give a some z direction to avoid blinking
+    ant_movement.direction.z = 1.;
     // Re-place ant on the wall
     let offset = (ANT_SIZE.y / 2. - ANT_WALL_CLIPPING) * if is_up_side { -1. } else { 1. };
     ant_transform.translation.y += wall_transform_relative.translation.y + offset;
@@ -644,6 +710,8 @@ fn place_ant_on_vertical_wall(
 ) {
     // Change position kind
     ant_movement.position_kind = AntPositionKind::VerticalWall { is_left_side };
+    // Give a some z direction to avoid blinking
+    ant_movement.direction.z = 1.;
     // Re-place ant on the wall
     let offset = (ANT_SIZE.x / 2. - ANT_WALL_CLIPPING) * if is_left_side { 1. } else { -1. };
     ant_transform.translation.x += wall_transform_relative.translation.x + offset;
