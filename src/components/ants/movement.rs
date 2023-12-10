@@ -51,13 +51,15 @@ pub fn update_ant_direction(
 
         let elapsed = time.elapsed_seconds();
 
+        // the gradient for the pheromon the ant follows is not null: follow it
         let random = rng.gen_range(0.0..1.0);
-        // the gradient for the pheromon the ant follows is not null: follow its direction for at least a second
         let goal_gradient = closest_gradient.gradients[ant_movement.goal.kind as usize];
-        if goal_gradient != Vec3::ZERO && elapsed - ant_movement.last_update > random + 0.5 {
+        if goal_gradient != Vec3::ZERO {
             // TODO randomize a bit the direction
-            ant_movement.direction = goal_gradient;
-            ant_movement.last_update = elapsed;
+            if elapsed - ant_movement.last_update > random + 0.5 {
+                ant_movement.direction = goal_gradient;
+                ant_movement.last_update = elapsed;
+            }
         } else {
             match ant_movement.position_kind {
                 AntPositionKind::Background => {
@@ -72,20 +74,18 @@ pub fn update_ant_direction(
                     }
                 }
                 AntPositionKind::VerticalWall { .. } => {
-                    if elapsed - ant_movement.last_update > random + 2. {
-                        ant_movement.direction =
-                            Quat::from_rotation_x(rng.gen_range(-(PI / 6.)..(PI / 6.)))
-                                * ant_movement.direction;
-                    }
+                    ant_movement.direction =
+                        Quat::from_rotation_x(rng.gen_range(-(PI / 6.)..(PI / 6.)))
+                            * ant_movement.direction;
                 }
                 AntPositionKind::HorizontalWall { .. } => {
-                    if elapsed - ant_movement.last_update > random + 2. {
-                        ant_movement.direction =
-                            Quat::from_rotation_y(rng.gen_range(-(PI / 6.)..(PI / 6.)))
-                                * ant_movement.direction;
-                    }
+                    ant_movement.direction =
+                        Quat::from_rotation_y(rng.gen_range(-(PI / 6.)..(PI / 6.)))
+                            * ant_movement.direction;
                 }
             }
         }
+
+        debug!("ant direction {:?}", ant_movement.direction)
     }
 }

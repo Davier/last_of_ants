@@ -114,7 +114,7 @@ fn spawn_ants_on_navmesh(
         .find(|(_, name, _)| name.as_str() == "Entities")
         .unwrap();
 
-    for _ in 0..1 {
+    for _ in 0..10 {
         let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
         else {
             return;
