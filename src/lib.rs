@@ -11,8 +11,8 @@ use bevy_rapier2d::prelude::*;
 
 use components::{
     ants::{
-        goal::{update_metrics, Metrics},
-        *,
+        goal::{update_metrics, Metrics, update_ant_goal},
+        *, movement::{update_ant_direction},
     },
     clues::place_clues,
     cocoons::CocoonBundle,

@@ -5,7 +5,7 @@ use bevy_rapier2d::prelude::*;
 use rand::{seq::IteratorRandom, thread_rng, Rng};
 
 use super::{
-    ants::{goal::AntGoal, *},
+    ants::{goal::AntGoal, *, movement::AntMovement},
     nav_mesh::NavNode,
 };
 

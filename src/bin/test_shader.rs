@@ -9,7 +9,7 @@ use bevy::{
 };
 use last_of_ants::{
     components::ants::{
-        goal::AntGoal, AntColorKind, AntMovement, AntPositionKind, AntStyle, LiveAnt,
+        goal::AntGoal, AntColorKind, AntPositionKind, AntStyle, LiveAnt, movement::AntMovement,
     },
     render::render_ant::{AntMaterial, AntMaterialPlugin},
     ANT_SIZE,
@@ -99,6 +99,7 @@ fn setup(
                 direction,
                 current_node: (Entity::PLACEHOLDER, GlobalTransform::default()),
                 goal: AntGoal::default(),
+                last_update: 0.,
             },
             AntStyle {
                 scale,

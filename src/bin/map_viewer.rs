@@ -119,7 +119,7 @@ fn spawn_ants_on_navmesh(
         .find(|(_, name, _)| name.as_str() == "Entities")
         .unwrap();
 
-    for _ in 0..1 {
+    for _ in 0..10 {
         let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
         else {
             return;
@@ -131,7 +131,7 @@ fn spawn_ants_on_navmesh(
             rng.gen::<f32>() - 0.5,
         )
         .normalize();
-        let color_primary_kind = AntColorKind::new_random(&mut rng);
+        let color_primary_kind = AntColorKind::YELLOW;
         let color_secondary_kind =
             AntColorKind::new_random_from_primary(&mut rng, &color_primary_kind);
         // let color_primary_kind = AntColorKind::BLACK;
@@ -140,7 +140,7 @@ fn spawn_ants_on_navmesh(
         let scale = 1.; // TODO
         let speed = 40.;
         let goal = AntGoal {
-            kind: ObjectKind::Food,
+            kind: ObjectKind::Default,
             holds: 0.,
         };
         LiveAntBundle::spawn_on_nav_node(
