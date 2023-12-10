@@ -1,33 +1,34 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::LevelEvent;
 
-use crate::components::pheromon_source::ObjectCoords;
+use crate::components::object::ObjectCoords;
 
 use super::{
     nav_mesh::{NavMeshLUT, NavNode},
-    pheromon_source::Object,
+    object::Object,
 };
 
 pub const DEFAULT: usize = 0;
 pub const FOOD_STORE: usize = 1;
 pub const FOOD_SOURCE: usize = 2;
 pub const N_PH: usize = 3;
+pub const N: usize = N_PH * 2;
 
 #[derive(Resource, Reflect)]
 pub struct PheromonsConfig {
-    evaporation_rate: [f32; N_PH],
-    diffusion_rate: [f32; N_PH],
-    diffusion_floor: [f32; N_PH],
-    concentration_floor: [f32; N_PH],
+    evaporation_rate: [f32; N],
+    diffusion_rate: [f32; N],
+    diffusion_floor: [f32; N],
+    concentration_floor: [f32; N],
 }
 
 impl Default for PheromonsConfig {
     fn default() -> Self {
         Self {
-            evaporation_rate: [0.005; N_PH],
-            diffusion_rate: [0.01, 0.4, 0.1],
-            diffusion_floor: [0.001; N_PH],
-            concentration_floor: [0.001; N_PH],
+            evaporation_rate: [0.005; N],
+            diffusion_rate: [0.01, 0.4, 0.3, 0.01, 0.01, 0.01],
+            diffusion_floor: [0.001; N],
+            concentration_floor: [0.001; N],
         }
     }
 }
@@ -44,10 +45,9 @@ pub struct SourceCoord {
     pub y: i32,
 }
 
-// TODO associate source to navnode
 #[derive(Component, Debug, Default)]
 pub struct PheromonsSource {
-    pub concentrations: Option<[f32; N_PH]>,
+    pub concentrations: Option<[f32; N]>,
 }
 
 impl PheromonsSource {
@@ -55,7 +55,7 @@ impl PheromonsSource {
         if let Some(mut concentrations) = self.concentrations {
             concentrations[kind] += concentration;
         } else {
-            let mut concentrations = [0.0_f32; N_PH];
+            let mut concentrations = [0.0_f32; N];
             concentrations[kind] = concentration;
             self.concentrations = Some(concentrations);
         }
@@ -73,39 +73,39 @@ impl PheromonsSource {
 
 #[derive(Component)]
 pub struct PheromonsBuffers {
-    pub add_buffer: [f32; N_PH],
+    pub add_buffer: [f32; N],
 }
 
 impl Default for PheromonsBuffers {
     fn default() -> Self {
         Self {
-            add_buffer: [0.0; N_PH],
+            add_buffer: [0.0; N],
         }
     }
 }
 
 #[derive(Component)]
 pub struct Pheromons {
-    pub concentrations: [f32; N_PH],
+    pub concentrations: [f32; N],
 }
 
 impl Default for Pheromons {
     fn default() -> Self {
         Self {
-            concentrations: [0.0; N_PH],
+            concentrations: [0.0; N],
         }
     }
 }
 
 #[derive(Component)]
 pub struct PheromonsGradients {
-    pub gradients: [Vec2; N_PH],
+    pub gradients: [Vec2; N],
 }
 
 impl Default for PheromonsGradients {
     fn default() -> Self {
         Self {
-            gradients: [Vec2::ZERO; N_PH],
+            gradients: [Vec2::ZERO; N],
         }
     }
 }
@@ -145,7 +145,7 @@ pub fn diffuse_pheromons(
     mut pheromon_buffers: Query<&mut PheromonsBuffers, With<Pheromons>>,
     phcfg: Res<PheromonsConfig>,
 ) {
-    for i in 0..N_PH {
+    for i in 0..N {
         // Compute diffusion to neighbours
         for (_, node, node_pheromons) in nav_nodes.iter() {
             let diffused = node_pheromons.concentrations[i] * phcfg.diffusion_rate[i];
@@ -191,7 +191,7 @@ pub fn compute_gradients(
     let foreground = Vec3::new(0., 0., 1.);
     let background = Vec3::new(0.0, 0.0, -1.0);
 
-    for i in 0..N_PH {
+    for i in 0..N {
         for (id, node, ph, mut gd) in nodes.iter_mut() {
             let (n, s, e, w, b) = match node {
                 NavNode::Background {
@@ -253,7 +253,7 @@ pub fn init_sources(
 
             if let Ok(mut node_source) = nodes.get_mut(node_id) {
                 debug!("Init source.");
-                node_source.add(object.pheromon_type(), object.concentration());
+                node_source.add(object.kind(), object.concentration);
 
                 commands.get_entity(node_id).unwrap().insert(*object);
             }

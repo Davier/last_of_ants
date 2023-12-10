@@ -95,7 +95,7 @@ fn setup(
                 },
                 speed: 30.,
                 direction,
-                current_wall: (Entity::PLACEHOLDER, GlobalTransform::default()),
+                current_node: (Entity::PLACEHOLDER, GlobalTransform::default()),
                 goal: 0,
             },
             AntStyle {

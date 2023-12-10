@@ -10,8 +10,9 @@ use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use itertools::Itertools;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, AntColorKind, LiveAnt, LiveAntBundle},
+        ants::{debug_ants, goal::AntGoal, AntColorKind, LiveAnt, LiveAntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
+        object::ObjectKind,
         pheromons::{
             apply_sources, compute_gradients, diffuse_pheromons, Pheromons, PheromonsGradients,
             DEFAULT, FOOD_SOURCE, FOOD_STORE,
@@ -123,7 +124,7 @@ fn spawn_ants_on_navmesh(
         .find(|(_, name, _)| name.as_str() == "Entities")
         .unwrap();
 
-    for _ in 0..1000 {
+    for _ in 0..10 {
         let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
         else {
             return;
@@ -143,6 +144,10 @@ fn spawn_ants_on_navmesh(
         // let scale = rng.gen::<f32>() + 0.5;
         let scale = 1.; // TODO
         let speed = 40.;
+        let goal = AntGoal {
+            kind: ObjectKind::Food,
+            holds: 0.,
+        };
         LiveAntBundle::spawn_on_nav_node(
             &mut commands,
             direction,
@@ -156,6 +161,7 @@ fn spawn_ants_on_navmesh(
             entities_holder,
             entities_holder_pos,
             &mut rng,
+            goal,
         );
         // .insert(MovementGoal(_id));
     }

@@ -14,7 +14,7 @@ use components::{
     clues::place_clues,
     cocoons::CocoonBundle,
     nav_mesh::*,
-    pheromon_source::ObjectBundle,
+    object::ObjectBundle,
     pheromons::{init_pheromons, init_sources, PheromonsConfig},
     player::*,
     tiles::*,
@@ -32,7 +32,6 @@ pub struct GamePlugin;
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.register_ldtk_entity::<PlayerBundle>("Player")
-            .register_ldtk_entity::<PheromonSourceBundle>("Source")
             .register_ldtk_entity::<CocoonBundle>("Shedding")
             .register_ldtk_entity::<ObjectBundle>("Source")
             // .register_ldtk_entity::<AntBundle>("Ant")
@@ -74,6 +73,7 @@ impl Plugin for GamePlugin {
                         update_ant_direction,
                         // update_ant_direction_randomly,
                         update_ant_position,
+                        update_ant_goal,
                     )
                         .chain(),
                 ),
