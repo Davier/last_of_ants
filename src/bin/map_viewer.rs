@@ -119,7 +119,7 @@ fn spawn_ants_on_navmesh(
         .find(|(_, name, _)| name.as_str() == "Entities")
         .unwrap();
 
-    for _ in 0..10 {
+    for _ in 0..1 {
         let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
         else {
             return;
@@ -262,7 +262,7 @@ fn debug_pheromons(
         gizmos.circle_2d(closest.1, 0.5, Color::RED);
         gizmos.ray_2d(
             cursor_world_position,
-            closest.4.gradients[DEFAULT],
+            closest.4.gradients[DEFAULT].xy(),
             Color::ALICE_BLUE,
         );
 
@@ -284,7 +284,7 @@ fn debug_pheromons(
         }
         gizmos.ray_2d(
             t.translation().xy(),
-            g.gradients[DEFAULT] * 2.0,
+            g.gradients[DEFAULT].xy() * 2.0,
             Color::BLUE,
         );
 
@@ -297,7 +297,7 @@ fn debug_pheromons(
         }
         gizmos.ray_2d(
             t.translation().xy(),
-            g.gradients[FOOD_STORE] * 2.0,
+            g.gradients[FOOD_STORE].xy() * 2.0,
             Color::YELLOW,
         );
 
@@ -310,7 +310,7 @@ fn debug_pheromons(
         }
         gizmos.ray_2d(
             t.translation().xy(),
-            g.gradients[FOOD_SOURCE] * 2.0,
+            g.gradients[FOOD_SOURCE].xy() * 2.0,
             Color::ORANGE_RED,
         );
     }

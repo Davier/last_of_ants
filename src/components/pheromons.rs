@@ -8,8 +8,7 @@ use super::{nav_mesh::NavNode, object::Object};
 pub const DEFAULT: usize = 0;
 pub const FOOD_STORE: usize = 1;
 pub const FOOD_SOURCE: usize = 2;
-pub const N_PH: usize = 3;
-pub const N: usize = N_PH * 2;
+pub const N: usize = 3;
 
 #[derive(Resource, Reflect)]
 pub struct PheromonsConfig {
@@ -22,8 +21,8 @@ pub struct PheromonsConfig {
 impl Default for PheromonsConfig {
     fn default() -> Self {
         Self {
-            evaporation_rate: [0.005; N],
-            diffusion_rate: [0.01, 0.4, 0.4, 0.01, 0.01, 0.01],
+            evaporation_rate: [0.001; N],
+            diffusion_rate: [0.01, 0.6, 0.6],
             diffusion_floor: [0.001; N],
             concentration_floor: [0.001; N],
         }
@@ -96,13 +95,13 @@ impl Default for Pheromons {
 
 #[derive(Component)]
 pub struct PheromonsGradients {
-    pub gradients: [Vec2; N],
+    pub gradients: [Vec3; N],
 }
 
 impl Default for PheromonsGradients {
     fn default() -> Self {
         Self {
-            gradients: [Vec2::ZERO; N],
+            gradients: [Vec3::ZERO; N],
         }
     }
 }
@@ -177,61 +176,112 @@ pub fn diffuse_pheromons(
     }
 }
 
-pub fn compute_gradients(
-    mut nodes: Query<(Entity, &NavNode, &Pheromons, &mut PheromonsGradients)>,
-    pheromons: Query<&Pheromons, With<NavNode>>,
-) {
-    let up = Vec2::new(0.0, 1.0);
-    let down = Vec2::new(0.0, -1.0);
-    let right = Vec2::new(1.0, 0.0);
-    let left = Vec2::new(-1.0, 0.0);
-    let foreground = Vec3::new(0., 0., 1.);
-    let background = Vec3::new(0.0, 0.0, -1.0);
+#[derive(Default)]
+struct GradientComponents {
+    pub up: f32,
+    pub down: f32,
+    pub left: f32,
+    pub right: f32,
+    pub background: f32,
+    pub foreground: f32,
+}
 
+impl GradientComponents {
+    fn max(&self) -> f32 {
+        self.up
+            .max(self.down)
+            .max(self.left)
+            .max(self.right)
+            .max(self.background)
+            .max(self.foreground)
+    }
+
+    fn vec(&self) -> Vec3 {
+        Vec3::new(
+            self.right - self.left,
+            self.up - self.down,
+            self.foreground - self.background,
+        )
+    }
+}
+
+pub fn compute_gradients(
+    mut gradients: Query<(Entity, &mut PheromonsGradients)>,
+    nodes: Query<(&NavNode, &Pheromons)>,
+) {
     for i in 0..N {
-        for (id, node, ph, mut gd) in nodes.iter_mut() {
-            let (n, s, e, w, b) = match node {
+        for (entity, mut gradient) in gradients.iter_mut() {
+            let (node, pheromons) = nodes.get(entity).unwrap();
+            let mut components = GradientComponents::default();
+            match node {
                 NavNode::Background {
                     up,
                     left,
                     down,
                     right,
-                } => (
-                    pheromons.get(*up).unwrap().concentrations[i],
-                    pheromons.get(*down).unwrap().concentrations[i],
-                    pheromons.get(*right).unwrap().concentrations[i],
-                    pheromons.get(*left).unwrap().concentrations[i],
-                    0.,
-                ),
+                } => {
+                    let (up_neighbour, up_pheromons) = nodes.get(*up).unwrap();
+                    if matches!(up_neighbour, NavNode::Background { .. }) {
+                        components.up += up_pheromons.concentrations[i];
+                    } else {
+                        components.foreground += up_pheromons.concentrations[i];
+                    }
+
+                    let (down_neighbour, down_pheromons) = nodes.get(*down).unwrap();
+                    if matches!(down_neighbour, NavNode::Background { .. }) {
+                        components.down += down_pheromons.concentrations[i];
+                    } else {
+                        components.foreground += down_pheromons.concentrations[i];
+                    }
+
+                    let (left_neighbour, left_pheromons) = nodes.get(*left).unwrap();
+                    if matches!(left_neighbour, NavNode::Background { .. }) {
+                        components.left += left_pheromons.concentrations[i];
+                    } else {
+                        components.foreground += left_pheromons.concentrations[i];
+                    }
+
+                    let (right_neighbour, right_pheromons) = nodes.get(*right).unwrap();
+                    if matches!(right_neighbour, NavNode::Background { .. }) {
+                        components.right += right_pheromons.concentrations[i];
+                    } else {
+                        components.foreground += right_pheromons.concentrations[i];
+                    }
+                }
+                NavNode::VerticalEdge { up, down, back, .. } => {
+                    let (_, up_pheromons) = nodes.get(*up).unwrap();
+                    components.up += up_pheromons.concentrations[i];
+
+                    let (_, down_pheromons) = nodes.get(*down).unwrap();
+                    components.down += down_pheromons.concentrations[i];
+
+                    let (_, back_pheromons) = nodes.get(*back).unwrap();
+                    components.background += back_pheromons.concentrations[i];
+                }
                 NavNode::HorizontalEdge {
                     left, right, back, ..
-                } => (
-                    0.0,
-                    0.0,
-                    right
-                        .get()
-                        .map(|right| pheromons.get(right).unwrap().concentrations[i])
-                        .unwrap_or(0.0),
-                    left.get()
-                        .map(|left| pheromons.get(left).unwrap().concentrations[i])
-                        .unwrap_or(0.0),
-                    back.map(|back| pheromons.get(back).unwrap().concentrations[i])
-                        .unwrap_or(0.0),
-                ),
-                NavNode::VerticalEdge { up, down, back, .. } => (
-                    pheromons.get(*up).unwrap().concentrations[i],
-                    pheromons.get(*down).unwrap().concentrations[i],
-                    0.0,
-                    0.0,
-                    pheromons.get(*back).unwrap().concentrations[i],
-                ),
-            };
-            // TODO: back
+                } => {
+                    if let Some(left_id) = left.get() {
+                        let (_, left_pheromons) = nodes.get(left_id).unwrap();
+                        components.left += left_pheromons.concentrations[i];
+                    }
 
-            if ph.concentrations[i] >= n.max(s).max(e).max(w).max(b) {
-                gd.gradients[i] = Vec2::ZERO;
+                    if let Some(right_id) = right.get() {
+                        let (_, right_pheromons) = nodes.get(right_id).unwrap();
+                        components.right += right_pheromons.concentrations[i];
+                    }
+
+                    if let Some(back_id) = back {
+                        let (_, back_pheromons) = nodes.get(*back_id).unwrap();
+                        components.background += back_pheromons.concentrations[i];
+                    }
+                }
+            }
+
+            if pheromons.concentrations[i] >= components.max() {
+                gradient.gradients[i] = Vec3::ZERO;
             } else {
-                gd.gradients[i] = n * up + s * down + e * right + w * left;
+                gradient.gradients[i] = components.vec();
             }
         }
     }
