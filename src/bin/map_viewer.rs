@@ -11,14 +11,16 @@ use itertools::Itertools;
 use last_of_ants::{
     components::{
         ants::{debug_ants, AntColorKind, LiveAnt, LiveAntBundle},
-        nav_mesh::{debug_nav_mesh, NavMeshLUT, NavNode},
+        nav_mesh::{debug_nav_mesh, NavNode},
         pheromons::{
             apply_sources, compute_gradients, diffuse_pheromons, PheromonGradients, PheromonSource,
             Pheromons, SourceCoord, PH1, PH2,
         },
+        zombants::spawn_zombant_queen,
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     render::MainCamera2d,
+    resources::nav_mesh_lut::NavMeshLUT,
     ui::ui_clues::UiCluesPlugin,
     GamePlugin,
 };
@@ -46,6 +48,7 @@ fn main() {
                 camera_movement,
                 debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
                 diffuse_pheromons.run_if(toggle_on_key(KeyCode::H)),
+                spawn_zombant_queen.run_if(on_key_just_pressed(KeyCode::Z)),
                 apply_sources.after(diffuse_pheromons),
                 compute_gradients.after(apply_sources),
                 update_text_counters,
@@ -231,7 +234,7 @@ fn debug_pheromons(
 
     buttons: Res<Input<MouseButton>>,
     q_window: Query<&Window, With<PrimaryWindow>>,
-    q_camera: Query<(&Camera, &GlobalTransform)>,
+    q_camera: Query<(&Camera, &GlobalTransform), With<MainCamera2d>>,
 ) {
     let (camera, camera_transform) = q_camera.single();
     let window = q_window.single();

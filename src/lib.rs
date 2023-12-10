@@ -10,15 +10,20 @@ use bevy_rapier2d::prelude::*;
 
 use components::{
     ants::*,
-    cocoons::{place_clues, CocoonBundle},
+    clues::place_clues,
+    cocoons::CocoonBundle,
     nav_mesh::*,
     pheromons::{init_pheromons, PheromonSourceBundle},
     player::*,
     tiles::*,
+    zombants::ZombAntQueenSpawnPoint,
 };
 use helpers::pause_if_not_focused;
 use render::{render_ant::AntMaterialPlugin, render_cocoon::CocoonMaterialPlugin};
-use resources::clues::{clues_receive_events, ClueEvent, Clues};
+use resources::{
+    clues::{clues_receive_events, ClueEvent, Clues},
+    nav_mesh_lut::NavMeshLUT,
+};
 
 pub struct GamePlugin;
 
@@ -28,6 +33,7 @@ impl Plugin for GamePlugin {
             .register_ldtk_entity::<PheromonSourceBundle>("Source")
             .register_ldtk_entity::<CocoonBundle>("Shedding")
             // .register_ldtk_entity::<AntBundle>("Ant")
+            .register_ldtk_entity::<ZombAntQueenSpawnPoint>("Zombant_Queen_Spawn_Point")
             .register_ldtk_int_cell::<TileGroundBundle>(TILE_INT_GROUND)
             .register_ldtk_int_cell::<TileEmptyUndergroundBundle>(TILE_INT_EMPTY)
             .register_type::<components::nav_mesh::NavNode>()

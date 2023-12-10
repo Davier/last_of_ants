@@ -12,7 +12,7 @@ use crate::{
 
 use super::{
     ants::{AntMovement, AntPositionKind, AntStyle},
-    cocoons::Clue,
+    clues::Clue,
     dead_ants::DeadAntBundle,
     nav_mesh::NavNode,
 };

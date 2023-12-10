@@ -8,12 +8,13 @@ use crate::{
     render::render_ant::{
         AntMaterial, AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D,
     },
+    resources::nav_mesh_lut::NavMeshLUT,
     ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER_SENSOR,
     COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE, WALL_Z_FACTOR,
 };
 
 use super::{
-    nav_mesh::{NavMeshLUT, NavNode},
+    nav_mesh::NavNode,
     pheromons::{PheromonGradients, PH1},
 };
 
