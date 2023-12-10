@@ -2,7 +2,7 @@ use bevy::prelude::*;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use last_of_ants::{
     helpers::on_key_just_pressed,
-    render::render_ant::AntMaterialPlugin,
+    render::{render_ant::AntMaterialPlugin, MainCamera2dBundle},
     resources::clues::{clues_receive_events, found_clue, ClueEvent, Clues},
     ui::ui_clues::UiCluesPlugin,
 };
@@ -28,5 +28,5 @@ fn main() {
 }
 
 fn setup(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(MainCamera2dBundle::default());
 }

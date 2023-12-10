@@ -1,17 +1,17 @@
-use bevy::{prelude::*, render::view::RenderLayers};
+use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::*;
 // use bevy_framepace::FramepacePlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, AntColorKind, LiveAntBundle},
+        ants::{debug_ants, AntColorKind, LiveAntBundle, goal::AntGoal},
         nav_mesh::{debug_nav_mesh, NavNode},
         player::{update_player_sensor, Player},
         zombants::spawn_zombant_queen,
     },
     helpers::{on_key_just_pressed, run_after, toggle_on_key, toggle_physics_debug},
-    render::MainCamera2d,
+    render::{MainCamera2d, MainCamera2dBundle},
     ui::ui_clues::UiCluesPlugin,
     GamePlugin, TILE_SIZE,
 };
@@ -44,18 +44,9 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn((
-        Camera2dBundle {
-            transform: Transform::from_xyz(0., 0., 500.),
-            projection: OrthographicProjection {
-                scale: 0.5,
-                ..default()
-            },
-            ..default()
-        },
-        RenderLayers::all(),
-        MainCamera2d,
-    ));
+    let mut camera = MainCamera2dBundle::default();
+    camera.camera.projection.scale = 0.5;
+    commands.spawn(camera);
 
     commands.spawn(LdtkWorldBundle {
         ldtk_handle: asset_server.load("Ant nest.ldtk"),
@@ -254,6 +245,7 @@ fn spawn_ants_on_navmesh(
             entities_holder,
             entities_holder_pos,
             &mut rng,
+            AntGoal::default(),
         );
     }
     // }

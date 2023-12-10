@@ -162,6 +162,7 @@ fn new_ant_clue_camera(ant_clue_image: Handle<Image>) -> impl Bundle {
             },
             ..default()
         },
+        UiCameraConfig { show_ui: false },
         RENDERLAYER_CLUE_ANT,
     )
 }

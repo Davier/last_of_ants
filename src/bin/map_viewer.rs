@@ -1,7 +1,6 @@
 use bevy::{
     diagnostic::{DiagnosticsStore, FrameTimeDiagnosticsPlugin},
     prelude::*,
-    render::view::RenderLayers,
     window::PrimaryWindow,
 };
 use bevy_ecs_ldtk::prelude::*;
@@ -20,8 +19,8 @@ use last_of_ants::{
         zombants::spawn_zombant_queen,
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
-    render::MainCamera2d,
-    resources::{clues::Clues, nav_mesh_lut::NavMeshLUT},
+    render::{MainCamera2d, MainCamera2dBundle},
+    resources::clues::Clues,
     ui::ui_clues::UiCluesPlugin,
     GamePlugin,
 };
@@ -60,14 +59,9 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands.spawn((
-        Camera2dBundle {
-            transform: Transform::from_xyz(500., 500., 500.),
-            ..default()
-        },
-        RenderLayers::all(),
-        MainCamera2d,
-    ));
+    let mut camera = MainCamera2dBundle::default();
+    camera.camera.transform = Transform::from_xyz(500., 500., 0.);
+    commands.spawn(camera);
 
     commands.spawn(LdtkWorldBundle {
         ldtk_handle: asset_server.load("Ant nest.ldtk"),

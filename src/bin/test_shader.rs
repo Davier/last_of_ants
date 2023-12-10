@@ -8,7 +8,7 @@ use bevy::{
     sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
 use last_of_ants::{
-    components::ants::{AntColorKind, AntMovement, AntPositionKind, AntStyle, LiveAnt},
+    components::ants::{AntColorKind, AntMovement, AntPositionKind, AntStyle, LiveAnt, goal::AntGoal},
     render::render_ant::{AntMaterial, AntMaterialPlugin},
     ANT_SIZE,
 };
@@ -96,7 +96,7 @@ fn setup(
                 speed: 30.,
                 direction,
                 current_node: (Entity::PLACEHOLDER, GlobalTransform::default()),
-                goal: 0,
+                goal: AntGoal::default(),
             },
             AntStyle {
                 scale,
