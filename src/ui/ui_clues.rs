@@ -10,7 +10,10 @@ use bevy::{
 };
 
 use crate::{
-    components::ants::{AntColorKind, AntStyle},
+    components::{
+        ants::{AntColorKind, AntStyle},
+        zombants::ZombAntQueen,
+    },
     render::render_ant::{AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MESH2D},
     resources::clues::Clues,
     CLUE_COLOR, RENDERLAYER_CLUE_ANT,
@@ -197,7 +200,11 @@ pub fn update_ui_clues(
     mut ui_nodes: Query<&mut Visibility, With<Node>>,
     clue_nodes: Query<Entity, With<ClueNode>>,
     mut ant_styles: Query<&mut AntStyle>,
+    zombant_queens: Query<Entity, (With<ZombAntQueen>, With<AntStyle>)>,
 ) {
+    if !clues.is_changed() {
+        return;
+    }
     let show_ant_clue = clues.z0_primary_color || clues.z0_secondary_color;
     let show_text = show_ant_clue || (clues.pheromone_view_charges > 0);
 
@@ -218,6 +225,18 @@ pub fn update_ui_clues(
     } else {
         Visibility::Hidden
     });
+    if let Ok(zombant_queen) = zombant_queens.get_single() {
+        let zombant_queen_style = *ant_styles.get(zombant_queen).unwrap();
+        let mut ant_clue_style = ant_styles.get_mut(clues.ant_clue).unwrap();
+        if clues.z0_primary_color {
+            ant_clue_style.color_primary_kind = zombant_queen_style.color_primary_kind;
+            ant_clue_style.color_primary = zombant_queen_style.color_primary;
+        }
+        if clues.z0_secondary_color {
+            ant_clue_style.color_secondary_kind = zombant_queen_style.color_secondary_kind;
+            ant_clue_style.color_secondary = zombant_queen_style.color_secondary;
+        }
+    }
 
     let existing_clue_nodes = clue_nodes.iter().len();
     if (existing_clue_nodes - 1) != clues.pheromone_view_charges {

@@ -5,7 +5,7 @@ use bevy::{
     window::PrimaryWindow,
 };
 use bevy_ecs_ldtk::prelude::*;
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::quick::{ResourceInspectorPlugin, WorldInspectorPlugin};
 use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use itertools::Itertools;
 use last_of_ants::{
@@ -21,7 +21,7 @@ use last_of_ants::{
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     render::MainCamera2d,
-    resources::nav_mesh_lut::NavMeshLUT,
+    resources::{clues::Clues, nav_mesh_lut::NavMeshLUT},
     ui::ui_clues::UiCluesPlugin,
     GamePlugin,
 };
@@ -35,6 +35,7 @@ fn main() {
             RapierDebugRenderPlugin::default().disabled(),
             FrameTimeDiagnosticsPlugin,
             UiCluesPlugin,
+            ResourceInspectorPlugin::<Clues>::default(),
         ))
         .add_systems(Startup, setup)
         .add_systems(

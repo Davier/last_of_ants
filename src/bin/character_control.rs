@@ -8,6 +8,7 @@ use last_of_ants::{
         ants::{debug_ants, AntColorKind, LiveAntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
         player::{update_player_sensor, Player},
+        zombants::spawn_zombant_queen,
     },
     helpers::{on_key_just_pressed, run_after, toggle_on_key, toggle_physics_debug},
     render::MainCamera2d,
@@ -35,6 +36,7 @@ fn main() {
                 attach_camera_to_player,
                 player_movement.after(update_player_sensor),
                 spawn_ants_on_navmesh.run_if(run_after(10)), // FIXME
+                spawn_zombant_queen.run_if(run_after(11)),   // FIXME
             ),
         )
         .insert_resource(LevelSelection::index(0))
