@@ -2,6 +2,7 @@ use bevy::{prelude::*, render::view::RenderLayers};
 use bevy_rapier2d::prelude::*;
 
 use crate::{
+    render::render_ant::{AntMaterialBundle, ANT_MATERIAL_DEAD, ANT_MESH2D},
     ANT_SIZE, COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_WALLS,
     RENDERLAYER_ANTS,
 };
@@ -15,12 +16,14 @@ pub struct DeadAnt;
 pub struct DeadAntBundle {
     pub dead_ant: DeadAnt,
     pub ant_style: AntStyle,
-    pub sprite: SpriteBundle,
+    pub material: AntMaterialBundle,
     pub rigid_body: RigidBody,
     pub collider: Collider,
     pub collider_mass: ColliderMassProperties,
-    pub render_layers: RenderLayers,
+    pub active_events: ActiveEvents,
+    pub active_collisions: ActiveCollisionTypes,
     pub collision_groups: CollisionGroups,
+    pub render_layers: RenderLayers,
     pub ccd: Ccd,
 }
 
@@ -29,12 +32,9 @@ impl DeadAntBundle {
         Self {
             dead_ant: DeadAnt,
             ant_style,
-            sprite: SpriteBundle {
-                sprite: Sprite {
-                    color: Color::RED,
-                    custom_size: Some(ANT_SIZE * 2. / 3.),
-                    ..default()
-                },
+            material: AntMaterialBundle {
+                mesh: ANT_MESH2D,
+                material: ANT_MATERIAL_DEAD,
                 transform: ant_transform,
                 ..default()
             },
@@ -49,6 +49,8 @@ impl DeadAntBundle {
                 COLLISION_GROUP_PLAYER | COLLISION_GROUP_WALLS,
             ),
             ccd: Ccd::enabled(),
+            active_events: ActiveEvents::all(),
+            active_collisions: ActiveCollisionTypes::all(),
         }
     }
 }

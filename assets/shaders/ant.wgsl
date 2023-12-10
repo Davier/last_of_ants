@@ -82,15 +82,23 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 fn fragment(
     in: VertexOutput,
 ) -> @location(0) vec4<f32> {
-    if material_is_side == 0u {
-        return fragment_top(in);
+
+    if (material_flags & ANT_MATERIAL_FLAG_IS_DEAD) != 0u {
+        return fragment_dead(in);
     } else {
-        return fragment_side(in);
+        if (material_flags & ANT_MATERIAL_FLAG_IS_SIDE) != 0u {
+            return fragment_side(in);
+        } else {
+            return fragment_top(in);
+        }
     }
 }
 
 
-@group(1) @binding(0) var<uniform> material_is_side: u32;
+@group(1) @binding(0) var<uniform> material_flags: u32;
+const ANT_MATERIAL_FLAG_IS_SIDE: u32 = 1u;
+const ANT_MATERIAL_FLAG_IS_DEAD: u32 = 2u;
+const ANT_MATERIAL_FLAG_HAS_HALO: u32 = 4u;
 
 const PI: f32 = 3.1415;
 const animation_speed = 4.; // Cycles per second
@@ -151,6 +159,41 @@ fn fragment_top(mesh: VertexOutput) -> vec4<f32> {
 
 
     return combine_ant_parts(mesh, d_p, d_s);
+}
+
+fn fragment_dead(mesh: VertexOutput) -> vec4<f32> {
+    let anim_1: f32 = 0.; //cos(globals.time * 2. * PI * animation_speed + mesh.instance_phase);
+    var pos = (mesh.uv.xy * 2. - 1.) * 150.;
+    pos.y = pos.y - 70.;
+    let pos_front = rotate(pos, PI / 5.);
+    let pos_back = rotate(pos + vec2(-55., 0.), -PI / 5.);
+    // Head
+    var d_s = sd_circle(pos_front + vec2(60., -10.), 30.);
+    // Thorax
+    var d_p = sd_rounded_box(pos, vec2(50., 25.), 32.);
+    // Waist
+    d_s = opUnion(d_s, sd_circle(pos + vec2(-55., 0.), 20.));
+    // Bottom
+    d_s = opUnion(d_s, sd_rounded_box(rotate(pos_back + vec2(-30., -10.), -PI / 6.), vec2(40., 27.), 40.));
+    // Antenna
+    d_s = opUnion(d_s, sd_segment(pos_front, vec2(-100., -20.), vec2(-125., 65.)));
+    d_s = opUnion(d_s, sd_segment(pos_front, vec2(-100., -20.), vec2(-60., 10.)));
+    // Leg front
+    d_s = opUnion(d_s, sd_segment(pos, vec2(-10., -40.), vec2(-40. + anim_1 * 10., 65.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(-10., -40.), vec2(10., 20.)));
+    // Leg middle
+    d_s = opUnion(d_s, sd_segment(pos, vec2(10., -40.), vec2(0. - anim_1 * 10., 65.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(10., -40.), vec2(20., 20.)));
+    // Leg back
+    d_s = opUnion(d_s, sd_segment(pos, vec2(30., -40.), vec2(60. + anim_1 * 10., 65.)));
+    d_s = opUnion(d_s, sd_segment(pos, vec2(30., -40.), vec2(30., 20.)));
+
+    var color = combine_ant_parts(mesh, d_p, d_s);
+    let factor = 0.8;
+    color.r = color.r * factor;
+    color.g = color.g * factor;
+    color.b = color.b * factor;
+    return color;
 }
 
 fn combine_ant_parts(mesh: VertexOutput, d_p: f32, d_s: f32) -> vec4<f32> {

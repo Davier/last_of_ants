@@ -48,8 +48,9 @@ impl Plugin for AntMaterialPlugin {
         ));
 
         let mut materials = app.world.resource_mut::<Assets<AntMaterial>>();
-        materials.insert(ANT_MATERIAL_SIDE, AntMaterial::new(true));
-        materials.insert(ANT_MATERIAL_TOP, AntMaterial::new(false));
+        materials.insert(ANT_MATERIAL_SIDE, AntMaterial::new(true, false, false));
+        materials.insert(ANT_MATERIAL_TOP, AntMaterial::new(false, false, false));
+        materials.insert(ANT_MATERIAL_DEAD, AntMaterial::new(false, true, false));
         let mut meshes = app.world.resource_mut::<Assets<Mesh>>();
         meshes.insert(
             ANT_MESH2D.0,
@@ -75,18 +76,33 @@ impl Plugin for AntMaterialPlugin {
 pub type AntMaterialBundle = MaterialMesh2dBundle<AntMaterial>;
 pub const ANT_MATERIAL_SIDE: Handle<AntMaterial> = Handle::weak_from_u128(12261044474578958661);
 pub const ANT_MATERIAL_TOP: Handle<AntMaterial> = Handle::weak_from_u128(6041464017875828972);
+pub const ANT_MATERIAL_DEAD: Handle<AntMaterial> = Handle::weak_from_u128(17744549271943886986);
 pub const ANT_MESH2D: Mesh2dHandle = Mesh2dHandle(Handle::weak_from_u128(17147126180050932214));
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Copy, Clone)]
 pub struct AntMaterial {
     #[uniform(0)]
-    pub is_side: u32,
+    pub flags: u32,
 }
+const ANT_MATERIAL_FLAG_IS_SIDE: u32 = 0b0001;
+const ANT_MATERIAL_FLAG_IS_DEAD: u32 = 0b0010;
+const ANT_MATERIAL_FLAG_HAS_HALO: u32 = 0b0100;
 
 impl AntMaterial {
-    pub fn new(is_side: bool) -> AntMaterial {
+    pub fn new(is_side: bool, is_dead: bool, has_halo: bool) -> AntMaterial {
+        let mut flags = 0;
+        if is_side {
+            flags |= ANT_MATERIAL_FLAG_IS_SIDE;
+        }
+        if is_dead {
+            flags |= ANT_MATERIAL_FLAG_IS_DEAD;
+        }
+        if has_halo {
+            flags |= ANT_MATERIAL_FLAG_HAS_HALO;
+        }
+        dbg!(flags);
         Self {
-            is_side: is_side as u32,
+            flags,
         }
     }
 }

@@ -48,8 +48,8 @@ fn setup(
             flip: false,
         }))
         .into();
-    let material_side: Handle<AntMaterial> = materials.add(AntMaterial { is_side: 1 });
-    let material_top: Handle<AntMaterial> = materials.add(AntMaterial { is_side: 0 });
+    let material_side: Handle<AntMaterial> = materials.add(AntMaterial::new(true, true, false));
+    let material_top: Handle<AntMaterial> = materials.add(AntMaterial::new(false, true, false));
     for _ in 0..10 {
         let angle = rng.gen::<f32>() * 2. * PI;
         let direction = Vec3::new(angle.cos(), angle.sin(), 0.);

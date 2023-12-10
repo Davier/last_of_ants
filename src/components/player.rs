@@ -52,7 +52,7 @@ impl Default for PlayerBundle {
                 apply_impulse_to_dynamic_bodies: false, // FIXME: I couldn't get it to work
                 autostep: Some(CharacterAutostep {
                     include_dynamic_bodies: true,
-                    max_height: CharacterLength::Relative(0.4),
+                    max_height: CharacterLength::Relative(1.0),
                     ..default()
                 }),
                 ..Default::default()
