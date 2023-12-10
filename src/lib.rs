@@ -1,6 +1,8 @@
 pub mod components;
 pub mod helpers;
 pub mod render;
+pub mod resources;
+pub mod ui;
 
 use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers};
 use bevy_ecs_ldtk::{prelude::*, systems::process_ldtk_levels};
@@ -8,14 +10,15 @@ use bevy_rapier2d::prelude::*;
 
 use components::{
     ants::*,
+    cocoons::{place_clues, CocoonBundle},
     nav_mesh::*,
     pheromons::{init_pheromons, PheromonSourceBundle},
     player::*,
-    cocoons::{CocoonBundle, place_clues},
     tiles::*,
 };
 use helpers::pause_if_not_focused;
 use render::{render_ant::AntMaterialPlugin, render_cocoon::CocoonMaterialPlugin};
+use resources::clues::{clues_receive_events, ClueEvent, Clues};
 
 pub struct GamePlugin;
 
@@ -28,8 +31,10 @@ impl Plugin for GamePlugin {
             .register_ldtk_int_cell::<TileGroundBundle>(TILE_INT_GROUND)
             .register_ldtk_int_cell::<TileEmptyUndergroundBundle>(TILE_INT_EMPTY)
             .register_type::<components::nav_mesh::NavNode>()
+            .register_type::<Clues>()
             .insert_resource(AssetMetaCheck::Never)
             .init_resource::<NavMeshLUT>()
+            .add_event::<ClueEvent>()
             .add_plugins((
                 DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites? (TODO: test)
                 LdtkPlugin,
@@ -51,6 +56,7 @@ impl Plugin for GamePlugin {
                 (
                     update_player_sensor,
                     spawn_player_sensor,
+                    clues_receive_events,
                     (
                         update_ant_position_kinds,
                         assert_ants, // TODO: disable in release?
@@ -85,6 +91,10 @@ pub const COLLISION_GROUP_PLAYER: Group = Group::GROUP_2;
 pub const COLLISION_GROUP_PLAYER_SENSOR: Group = Group::GROUP_3;
 pub const COLLISION_GROUP_ANTS: Group = Group::GROUP_4;
 pub const COLLISION_GROUP_DEAD_ANTS: Group = Group::GROUP_4;
+pub const COLLISION_GROUP_CLUE: Group = Group::GROUP_5;
 
 pub const RENDERLAYER_ANTS: RenderLayers = RenderLayers::layer(1);
 pub const RENDERLAYER_PLAYER: RenderLayers = RenderLayers::layer(2);
+pub const RENDERLAYER_CLUE_ANT: RenderLayers = RenderLayers::layer(3);
+
+pub const CLUE_COLOR: Color = Color::rgb_linear(1., 0.6, 0.);

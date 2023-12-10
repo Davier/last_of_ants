@@ -120,7 +120,7 @@ fn fragment_side(mesh: VertexOutput) -> vec4<f32> {
     d_s = opUnion(d_s, sd_segment(pos, vec2(30., -40.), vec2(60. + anim_1 * 10., 65.)));
     d_s = opUnion(d_s, sd_segment(pos, vec2(30., -40.), vec2(30., 20.)));
 
-    return blend_colors(mesh, d_p, d_s);
+    return combine_ant_parts(mesh, d_p, d_s);
 }
 
 fn fragment_top(mesh: VertexOutput) -> vec4<f32> {
@@ -149,15 +149,37 @@ fn fragment_top(mesh: VertexOutput) -> vec4<f32> {
     d_s = opUnion(d_s, sd_segment(pos, vec2(40., 30.), vec2(75., 80. + anim_1 * 10.)));
     d_s = opUnion(d_s, sd_segment(pos, vec2(40., 30.), vec2(20., 30.)));
 
-    return blend_colors(mesh, d_p, d_s);
+
+    return combine_ant_parts(mesh, d_p, d_s);
 }
 
-fn blend_colors(mesh: VertexOutput, d_p: f32, d_s: f32) -> vec4<f32> {
+fn combine_ant_parts(mesh: VertexOutput, d_p: f32, d_s: f32) -> vec4<f32> {
     let primary_color = sd_color_smooth(d_p - 3., mesh.instance_color_primary.xyz);
     let secondary_color = sd_color_smooth(d_s - 3., mesh.instance_color_secondary.xyz);
     let alpha = max(primary_color.a, secondary_color.a);
     let color = select(secondary_color.rgb, primary_color.rgb, secondary_color.a < primary_color.a);
+    // let color = blend_colors(primary_color, secondary_color);
+
+
+    // let color_halo = vec3(1., 0.6, 0.);
+    // var halo = sd_color_halo(opUnion(d_s, d_p), 50., color_halo);
+    // let halo_blink: f32 = cos(globals.time * 2. * PI / 2.) * 0.5 + 0.5;
+    // halo.a = halo.a * halo_blink;
+
+    // return blend_colors(halo, vec4(color.r, color.g, color.b, alpha));
     return vec4(color.r, color.g, color.b, alpha);
+    // return color;
+}
+
+
+fn sd_color_halo(d: f32, width: f32, color: vec3<f32>) -> vec4<f32> {
+    let x = pow(d / width, 0.3);
+    let alpha = smoothstep(1., 0., x);
+    return vec4(color, alpha);
+}
+
+fn blend_colors(dest: vec4<f32>, source: vec4<f32>) -> vec4<f32> {
+    return source.a * source.rbga + (1. - source.a) * dest.rgba;
 }
 
 fn sd_color_sharp(d: f32, color: vec3<f32>) -> vec4<f32> {

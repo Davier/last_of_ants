@@ -1,6 +1,6 @@
 use bevy::{
     prelude::*,
-    render::render_resource::{ShaderRef, AsBindGroup},
+    render::render_resource::{AsBindGroup, ShaderRef},
     sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle},
 };
 
@@ -38,9 +38,7 @@ impl Material2d for CocoonMaterial {
 }
 
 pub type CocoonMaterialBundle = MaterialMesh2dBundle<CocoonMaterial>;
-pub const COCOON_MATERIAL: Handle<CocoonMaterial> =
-    Handle::weak_from_u128(13511600823605874864);
+pub const COCOON_MATERIAL: Handle<CocoonMaterial> = Handle::weak_from_u128(13511600823605874864);
 pub const COCOON_MATERIAL_CLUE: Handle<CocoonMaterial> =
     Handle::weak_from_u128(1401247957767436212);
-pub const COCOON_MESH2D: Mesh2dHandle =
-    Mesh2dHandle(Handle::weak_from_u128(17407549215165429623));
+pub const COCOON_MESH2D: Mesh2dHandle = Mesh2dHandle(Handle::weak_from_u128(17407549215165429623));

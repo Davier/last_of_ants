@@ -5,12 +5,14 @@ use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    COLLISION_GROUP_ANTS, COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER,
-    COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, PLAYER_SIZE, RENDERLAYER_PLAYER,
+    resources::clues::ClueEvent, COLLISION_GROUP_ANTS, COLLISION_GROUP_CLUE,
+    COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
+    COLLISION_GROUP_WALLS, PLAYER_SIZE, RENDERLAYER_PLAYER,
 };
 
 use super::{
     ants::{AntMovement, AntPositionKind, AntStyle},
+    cocoons::Clue,
     dead_ants::DeadAntBundle,
     nav_mesh::NavNode,
 };
@@ -67,6 +69,8 @@ pub fn update_player_sensor(
     mut players: Query<&mut Player>,
     nav_nodes: Query<&NavNode>,
     ants: Query<(&AntMovement, &Transform, &Parent, &AntStyle)>,
+    clues: Query<(Entity, &Parent), With<Clue>>,
+    mut clue_events: EventWriter<ClueEvent>,
 ) {
     for (sensor, colliding_entities) in player_sensors.iter() {
         let Ok(mut player) = players.get_mut(sensor.player) else {
@@ -79,6 +83,7 @@ pub fn update_player_sensor(
         player.on_ground.clear();
         player.on_wall.clear();
         for colliding_entity in colliding_entities.iter() {
+            // Collision with ant
             if let Ok((ant_movement, ant_transform, ant_parent, ant_style)) =
                 ants.get(colliding_entity)
             {
@@ -93,6 +98,7 @@ pub fn update_player_sensor(
                         .remove_children(&[colliding_entity]);
                     commands.entity(colliding_entity).despawn();
                 }
+            // Collision with wall
             } else if let Ok(nav_node) = nav_nodes.get(colliding_entity) {
                 match nav_node {
                     NavNode::VerticalEdge { is_left_side, .. } => {
@@ -117,6 +123,12 @@ pub fn update_player_sensor(
                     }
                     _ => (),
                 }
+            // Collision with a clue
+            } else if let Ok((entity, parent)) = clues.get(colliding_entity) {
+                // TODO: SFX
+                commands.entity(parent.get()).remove_children(&[entity]);
+                commands.entity(entity).despawn();
+                clue_events.send(ClueEvent::Found);
             }
         }
     }
@@ -157,7 +169,7 @@ pub fn spawn_player_sensor(
                 CollidingEntities::default(),
                 CollisionGroups::new(
                     COLLISION_GROUP_PLAYER_SENSOR,
-                    COLLISION_GROUP_WALLS | COLLISION_GROUP_ANTS,
+                    COLLISION_GROUP_WALLS | COLLISION_GROUP_ANTS | COLLISION_GROUP_CLUE,
                 ),
             ))
             .set_parent(entity);

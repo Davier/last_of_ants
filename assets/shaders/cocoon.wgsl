@@ -1,6 +1,6 @@
 #import bevy_sprite::{
     mesh2d_vertex_output::VertexOutput,
-    mesh2d_view_bindings::view,
+    mesh2d_view_bindings::{view, globals},
 }
 
 #ifdef TONEMAP_IN_SHADER
@@ -11,6 +11,8 @@ struct CocoonMaterial {
     is_clue: u32,
 };
 const SHEDDING_MATERIAL_IS_CLUE_BIT: u32 = 1u;
+
+const PI: f32 = 3.1415;
 
 @group(1) @binding(0) var<uniform> material: CocoonMaterial;
 
@@ -31,7 +33,9 @@ fn fragment(
     // TODO: add texture
     if (material.is_clue & SHEDDING_MATERIAL_IS_CLUE_BIT) != 0u {
         let fill = sd_color_border(d, 10., color_fill, color_border);
-        let halo = sd_color_halo(d, 50., color_halo);
+        var halo = sd_color_halo(d, 50., color_halo);
+        let halo_blink: f32 = cos(globals.time * 2. * PI / 2.) * 0.5 + 0.5;
+        halo.a = halo.a * halo_blink;
         return blend_colors(halo, blend_colors(fill, spot));
     } else {
         let fill = sd_color_border(d, 10., color_fill, color_border);

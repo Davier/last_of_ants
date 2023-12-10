@@ -63,6 +63,7 @@ pub enum AntColorKind {
     BROWN,
     GREEN,
     YELLOW,
+    WHITE,
 }
 
 impl AntColorKind {
@@ -86,6 +87,7 @@ impl AntColorKind {
             AntColorKind::BROWN => [Self::BLACK, Self::RED, Self::BROWN].as_slice(),
             AntColorKind::GREEN => [Self::BLACK, Self::GREEN, Self::YELLOW].as_slice(),
             AntColorKind::YELLOW => [Self::BROWN, Self::GREEN, Self::YELLOW].as_slice(),
+            AntColorKind::WHITE => [Self::WHITE].as_slice(),
         }
         .choose(rng)
         .unwrap()
@@ -105,6 +107,7 @@ impl AntColorKind {
                 let shade = Vec3::from(rng.gen::<[f32; 3]>()) * 0.2;
                 Color::rgb(1. - shade.x, 0.6 - shade.y, 0.)
             }
+            AntColorKind::WHITE => Color::WHITE,
         }
     }
 }
@@ -457,13 +460,13 @@ pub fn update_ant_position_kinds(
 }
 
 pub fn assert_ants(
-    ants: Query<(Entity, &AntMovement, &GlobalTransform)>,
+    ants: Query<(Entity, &AntMovement, &GlobalTransform, &Parent)>,
     nav_nodes: Query<&NavNode>,
     // mut time: ResMut<Time<Virtual>>,
     mut commands: Commands,
 ) {
     let mut all_ok = true;
-    for (entity, ant_movement, ant_transform_global) in ants.iter() {
+    for (entity, ant_movement, ant_transform_global, parent) in ants.iter() {
         let current_nav_node = nav_nodes.get(ant_movement.current_wall.0).unwrap();
         let ok = match ant_movement.position_kind {
             AntPositionKind::Background => matches!(current_nav_node, NavNode::Background { .. }),
@@ -478,7 +481,8 @@ pub fn assert_ants(
             all_ok = false;
             error!("Entity has incorrect current wall assigned");
             dbg!((entity, ant_movement, ant_transform_global, current_nav_node));
-            commands.entity(entity).despawn(); // FIXME: parent?
+            commands.entity(parent.get()).remove_children(&[entity]);
+            commands.entity(entity).despawn();
         }
     }
     if !all_ok {

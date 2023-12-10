@@ -5,11 +5,13 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, LiveAntBundle, AntColorKind},
+        ants::{debug_ants, AntColorKind, LiveAntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
         player::{update_player_sensor, Player},
     },
     helpers::{on_key_just_pressed, run_after, toggle_on_key, toggle_physics_debug},
+    render::MainCamera2d,
+    ui::ui_clues::UiCluesPlugin,
     GamePlugin, TILE_SIZE,
 };
 use rand::{seq::IteratorRandom, Rng};
@@ -18,6 +20,7 @@ fn main() {
     App::new()
         .add_plugins((
             GamePlugin,
+            UiCluesPlugin,
             WorldInspectorPlugin::default().run_if(toggle_on_key(KeyCode::I)),
             RapierDebugRenderPlugin::default().disabled(),
             // FramepacePlugin,
@@ -39,16 +42,18 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands
-        .spawn(Camera2dBundle {
+    commands.spawn((
+        Camera2dBundle {
             transform: Transform::from_xyz(0., 0., 500.),
             projection: OrthographicProjection {
                 scale: 0.5,
                 ..default()
             },
             ..default()
-        })
-        .insert(RenderLayers::all());
+        },
+        RenderLayers::all(),
+        MainCamera2d,
+    ));
 
     commands.spawn(LdtkWorldBundle {
         ldtk_handle: asset_server.load("Ant nest.ldtk"),
@@ -188,7 +193,7 @@ fn player_movement(
 fn attach_camera_to_player(
     mut commands: Commands,
     added_player: Query<Entity, Added<Player>>,
-    camera: Query<Entity, With<Camera2d>>,
+    camera: Query<Entity, With<MainCamera2d>>,
 ) {
     if let Ok(player) = added_player.get_single() {
         let camera = camera.single();

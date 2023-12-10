@@ -18,6 +18,8 @@ use last_of_ants::{
         },
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
+    render::MainCamera2d,
+    ui::ui_clues::UiCluesPlugin,
     GamePlugin,
 };
 use rand::{seq::IteratorRandom, Rng};
@@ -29,6 +31,7 @@ fn main() {
             WorldInspectorPlugin::default().run_if(toggle_on_key(KeyCode::I)),
             RapierDebugRenderPlugin::default().disabled(),
             FrameTimeDiagnosticsPlugin,
+            UiCluesPlugin,
         ))
         .add_systems(Startup, setup)
         .add_systems(
@@ -53,12 +56,14 @@ fn main() {
 }
 
 fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
-    commands
-        .spawn(Camera2dBundle {
+    commands.spawn((
+        Camera2dBundle {
             transform: Transform::from_xyz(500., 500., 500.),
             ..default()
-        })
-        .insert(RenderLayers::all());
+        },
+        RenderLayers::all(),
+        MainCamera2d,
+    ));
 
     commands.spawn(LdtkWorldBundle {
         ldtk_handle: asset_server.load("Ant nest.ldtk"),
@@ -187,10 +192,10 @@ fn move_ants_on_mesh(
 }
 
 fn camera_movement(
-    mut transform: Query<&mut Transform, With<Camera2d>>,
+    mut transform: Query<&mut Transform, With<MainCamera2d>>,
     inputs: Res<Input<KeyCode>>,
     time: Res<Time>,
-    mut cameras: Query<&mut OrthographicProjection, With<Camera2d>>,
+    mut cameras: Query<&mut OrthographicProjection, With<MainCamera2d>>,
 ) {
     let dt = time.delta_seconds();
     let speed = 400.;

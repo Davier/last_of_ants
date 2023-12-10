@@ -1,6 +1,6 @@
-use bevy::{prelude::*, render::batching::NoAutomaticBatching, sprite::MaterialMesh2dBundle};
+use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_ecs_ldtk::prelude::*;
-use itertools::Itertools;
+use bevy_rapier2d::geometry::{ActiveCollisionTypes, ActiveEvents, Collider, CollisionGroups};
 use rand::{
     seq::{IteratorRandom, SliceRandom},
     thread_rng,
@@ -8,17 +8,15 @@ use rand::{
 
 use crate::{
     render::render_cocoon::{
-        CocoonMaterial, CocoonMaterialBundle, COCOON_MATERIAL, COCOON_MATERIAL_CLUE,
-        COCOON_MESH2D,
+        CocoonMaterial, CocoonMaterialBundle, COCOON_MATERIAL, COCOON_MATERIAL_CLUE, COCOON_MESH2D,
     },
-    CLUES_NUMBER, COCOON_ROOMS,
+    CLUES_NUMBER, COCOON_ROOMS, COLLISION_GROUP_CLUE, COLLISION_GROUP_PLAYER_SENSOR,
 };
 
 #[derive(Bundle)]
 pub struct CocoonBundle {
     pub cocoon: Cocoon,
     pub material: CocoonMaterialBundle,
-    pub no_batching: NoAutomaticBatching,
 }
 
 /// Cocoons sprinkled on the map. A few of them are clues.
@@ -47,7 +45,6 @@ impl CocoonBundle {
                 },
                 ..default()
             },
-            no_batching: NoAutomaticBatching,
         }
     }
 }
@@ -67,8 +64,12 @@ impl LdtkEntity for CocoonBundle {
     }
 }
 
+#[derive(Debug, Default, Clone, Copy, Component, Reflect)]
+pub struct Clue;
+
 pub fn place_clues(
-    mut cocoons: Query<(&mut Cocoon, &mut Handle<CocoonMaterial>)>,
+    mut commands: Commands,
+    mut cocoons: Query<(Entity, &mut Cocoon, &mut Handle<CocoonMaterial>)>,
     mut level_events: EventReader<LevelEvent>,
 ) {
     for level_event in level_events.read() {
@@ -78,16 +79,23 @@ pub fn place_clues(
         let mut rng = thread_rng();
         let selected_rooms = COCOON_ROOMS.choose_multiple(&mut rng, CLUES_NUMBER);
         for room in selected_rooms {
-            let Some((mut selected_cocoon, mut material)) = cocoons
+            let Some((entity, mut cocoon, mut material)) = cocoons
                 .iter_mut()
-                .filter(|(cocoon, _)| cocoon.room == *room)
+                .filter(|(_, cocoon, _)| cocoon.room == *room)
                 .choose(&mut rng)
             else {
                 warn!("Room {room} has no cocoons");
                 continue;
             };
-            selected_cocoon.is_clue = true;
+            cocoon.is_clue = true;
             *material = COCOON_MATERIAL_CLUE;
+            commands.entity(entity).insert((
+                Clue,
+                Collider::capsule_x(6., 3.),
+                ActiveEvents::COLLISION_EVENTS,
+                ActiveCollisionTypes::STATIC_STATIC,
+                CollisionGroups::new(COLLISION_GROUP_CLUE, COLLISION_GROUP_PLAYER_SENSOR),
+            ));
         }
     }
 }

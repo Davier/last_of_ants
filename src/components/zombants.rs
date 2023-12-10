@@ -22,6 +22,5 @@ pub struct ZombAntBundle {
 #[derive(Debug, Clone, Copy, Component, Reflect)]
 pub struct ZombAnt {}
 
-
 #[derive(Debug, Clone, Copy, Component, Reflect)]
 pub struct ZombAntQueen;
