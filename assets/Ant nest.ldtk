@@ -206,7 +206,7 @@
 		},
 		{
 			"identifier": "Source",
-			"uid": 12,
+			"uid": 10,
 			"tags": [],
 			"exportToToc": false,
 			"doc": null,
@@ -223,8 +223,8 @@
 			"fillOpacity": 1,
 			"lineOpacity": 1,
 			"hollow": false,
-			"color": "#63C74D",
-			"renderMode": "Rectangle",
+			"color": "#3E8948",
+			"renderMode": "Ellipse",
 			"showName": true,
 			"tilesetId": null,
 			"tileRenderMode": "FitInside",
@@ -238,10 +238,10 @@
 			"pivotY": 0,
 			"fieldDefs": [
 				{
-					"identifier": "Concentration",
+					"identifier": "Quantity",
 					"doc": null,
 					"__type": "Float",
-					"uid": 13,
+					"uid": 11,
 					"type": "F_Float",
 					"isArray": false,
 					"canBeNull": true,
@@ -262,7 +262,7 @@
 					"max": null,
 					"regex": null,
 					"acceptFileTypes": null,
-					"defaultOverride": { "id": "V_Float", "params": [0] },
+					"defaultOverride": null,
 					"textLanguageMode": null,
 					"symmetricalRef": false,
 					"autoChainRef": true,
@@ -273,13 +273,13 @@
 					"tilesetUid": null
 				},
 				{
-					"identifier": "Quantity",
+					"identifier": "Concentration",
 					"doc": null,
 					"__type": "Float",
-					"uid": 14,
+					"uid": 16,
 					"type": "F_Float",
 					"isArray": false,
-					"canBeNull": true,
+					"canBeNull": false,
 					"arrayMinLength": null,
 					"arrayMaxLength": null,
 					"editorDisplayMode": "Hidden",
@@ -332,7 +332,10 @@
 					"max": null,
 					"regex": null,
 					"acceptFileTypes": null,
-					"defaultOverride": null,
+					"defaultOverride": {
+						"id": "V_String",
+						"params": ["Default"]
+					},
 					"textLanguageMode": null,
 					"symmetricalRef": false,
 					"autoChainRef": true,
@@ -493,7 +496,11 @@
 				"averageColors": "f17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cf"
 			}
 		}
-	], "enums": [{ "identifier": "SourceType", "uid": 15, "values": [ { "id": "Food", "tileRect": null, "color": 12470831 }, { "id": "Storage", "tileRect": null, "color": 14120515 } ], "iconTilesetUid": null, "externalRelPath": null, "externalFileChecksum": null, "tags": [] }], "externalEnums": [], "levelFields": [] },
+	], "enums": [{ "identifier": "SourceType", "uid": 15, "values": [
+		{ "id": "Food", "tileRect": null, "color": 12470831 },
+		{ "id": "Storage", "tileRect": null, "color": 14120515 },
+		{ "id": "Default", "tileRect": null, "color": 15389866 }
+	], "iconTilesetUid": null, "externalRelPath": null, "externalFileChecksum": null, "tags": [] }], "externalEnums": [], "levelFields": [] },
 	"levels": [
 		{
 			"identifier": "Level_0",
@@ -558,21 +565,21 @@
 						},
 						{
 							"__identifier": "Source",
-							"__grid": [47,15],
+							"__grid": [8,31],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
-							"__smartColor": "#63C74D",
-							"__worldX": 764,
-							"__worldY": 117,
-							"iid": "60b0c450-8990-11ee-bf56-5f2ded91099d",
+							"__smartColor": "#3E8948",
+							"__worldX": 136,
+							"__worldY": 372,
+							"iid": "a7d416f0-8990-11ee-9f14-d1a7e2e0449e",
 							"width": 16,
 							"height": 16,
-							"defUid": 12,
-							"px": [764,245],
+							"defUid": 10,
+							"px": [136,500],
 							"fieldInstances": [
-								{ "__identifier": "Concentration", "__type": "Float", "__value": 10, "__tile": null, "defUid": 13, "realEditorValues": [{ "id": "V_Float", "params": [10] }] },
-								{ "__identifier": "Quantity", "__type": "Float", "__value": 0, "__tile": null, "defUid": 14, "realEditorValues": [{ "id": "V_Float", "params": [0] }] },
+								{ "__identifier": "Quantity", "__type": "Float", "__value": null, "__tile": null, "defUid": 11, "realEditorValues": [null] },
+								{ "__identifier": "Concentration", "__type": "Float", "__value": 10, "__tile": null, "defUid": 16, "realEditorValues": [{ "id": "V_Float", "params": [10] }] },
 								{ "__identifier": "SourceType", "__type": "LocalEnum.SourceType", "__value": "Storage", "__tile": null, "defUid": 17, "realEditorValues": [{
 									"id": "V_String",
 									"params": ["Storage"]
@@ -757,44 +764,21 @@
 						},
 						{
 							"__identifier": "Source",
-							"__grid": [41,33],
+							"__grid": [30,37],
 							"__pivot": [0,0],
 							"__tags": [],
 							"__tile": null,
-							"__smartColor": "#63C74D",
-							"__worldX": 667,
-							"__worldY": 402,
-							"iid": "db831f60-8990-11ee-bf56-c7f91dda6188",
+							"__smartColor": "#3E8948",
+							"__worldX": 482,
+							"__worldY": 465,
+							"iid": "1508a1e0-8990-11ee-bb5a-f92b7f230ac9",
 							"width": 16,
 							"height": 16,
-							"defUid": 12,
-							"px": [667,530],
+							"defUid": 10,
+							"px": [482,593],
 							"fieldInstances": [
-								{ "__identifier": "Concentration", "__type": "Float", "__value": 1, "__tile": null, "defUid": 13, "realEditorValues": [{ "id": "V_Float", "params": [1] }] },
-								{ "__identifier": "Quantity", "__type": "Float", "__value": null, "__tile": null, "defUid": 14, "realEditorValues": [null] },
-								{ "__identifier": "SourceType", "__type": "LocalEnum.SourceType", "__value": "Food", "__tile": null, "defUid": 17, "realEditorValues": [{
-									"id": "V_String",
-									"params": ["Food"]
-								}] }
-							]
-						},
-						{
-							"__identifier": "Source",
-							"__grid": [18,31],
-							"__pivot": [0,0],
-							"__tags": [],
-							"__tile": null,
-							"__smartColor": "#63C74D",
-							"__worldX": 292,
-							"__worldY": 376,
-							"iid": "54b1a5c0-8990-11ee-bf56-a949a6cc8407",
-							"width": 16,
-							"height": 16,
-							"defUid": 12,
-							"px": [292,504],
-							"fieldInstances": [
-								{ "__identifier": "Concentration", "__type": "Float", "__value": 1, "__tile": null, "defUid": 13, "realEditorValues": [{ "id": "V_Float", "params": [1] }] },
-								{ "__identifier": "Quantity", "__type": "Float", "__value": null, "__tile": null, "defUid": 14, "realEditorValues": [] },
+								{ "__identifier": "Quantity", "__type": "Float", "__value": null, "__tile": null, "defUid": 11, "realEditorValues": [] },
+								{ "__identifier": "Concentration", "__type": "Float", "__value": 10, "__tile": null, "defUid": 16, "realEditorValues": [{ "id": "V_Float", "params": [10] }] },
 								{ "__identifier": "SourceType", "__type": "LocalEnum.SourceType", "__value": "Food", "__tile": null, "defUid": 17, "realEditorValues": [{
 									"id": "V_String",
 									"params": ["Food"]
