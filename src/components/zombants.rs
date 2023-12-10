@@ -4,7 +4,10 @@ use bevy_ecs_ldtk::LdtkEntity;
 use bevy_rapier2d::prelude::*;
 use rand::{seq::IteratorRandom, thread_rng, Rng};
 
-use super::{ants::*, nav_mesh::NavNode};
+use super::{
+    ants::{goal::AntGoal, *},
+    nav_mesh::NavNode,
+};
 
 #[derive(Bundle)]
 pub struct ZombAntBundle {
@@ -85,6 +88,7 @@ pub fn spawn_zombant_queen(
         nav_node_pos,
         entities_holder_pos,
         &mut rng,
+        AntGoal::default(),
     );
     commands
         .spawn(ZombAntQueenBundle {

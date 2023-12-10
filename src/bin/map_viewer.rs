@@ -10,11 +10,12 @@ use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use itertools::Itertools;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, AntColorKind, LiveAnt, LiveAntBundle},
+        ants::{debug_ants, goal::AntGoal, AntColorKind, LiveAnt, LiveAntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
+        object::ObjectKind,
         pheromons::{
-            apply_sources, compute_gradients, diffuse_pheromons, PheromonGradients, PheromonSource,
-            Pheromons, SourceCoord, PH1, PH2,
+            apply_sources, compute_gradients, diffuse_pheromons, Pheromons, PheromonsGradients,
+            DEFAULT, FOOD_SOURCE, FOOD_STORE,
         },
         zombants::spawn_zombant_queen,
     },
@@ -39,7 +40,6 @@ fn main() {
         .add_systems(
             Update,
             (
-                debug_sources,
                 spawn_ants_on_navmesh.run_if(on_key_just_pressed(KeyCode::Space)),
                 // move_ants_on_mesh,
                 debug_nav_mesh.run_if(toggle_on_key(KeyCode::N)),
@@ -124,7 +124,7 @@ fn spawn_ants_on_navmesh(
         .find(|(_, name, _)| name.as_str() == "Entities")
         .unwrap();
 
-    for _ in 0..1000 {
+    for _ in 0..10 {
         let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
         else {
             return;
@@ -144,6 +144,10 @@ fn spawn_ants_on_navmesh(
         // let scale = rng.gen::<f32>() + 0.5;
         let scale = 1.; // TODO
         let speed = 40.;
+        let goal = AntGoal {
+            kind: ObjectKind::Food,
+            holds: 0.,
+        };
         LiveAntBundle::spawn_on_nav_node(
             &mut commands,
             direction,
@@ -157,6 +161,7 @@ fn spawn_ants_on_navmesh(
             entities_holder,
             entities_holder_pos,
             &mut rng,
+            goal,
         );
         // .insert(MovementGoal(_id));
     }
@@ -228,7 +233,7 @@ fn camera_movement(
 }
 
 fn debug_pheromons(
-    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonGradients)>,
+    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonsGradients)>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
     mut gizmos: Gizmos,
 
@@ -262,42 +267,56 @@ fn debug_pheromons(
         gizmos.circle_2d(closest.1, 0.5, Color::RED);
         gizmos.ray_2d(
             cursor_world_position,
-            closest.4.gradients[PH1],
+            closest.4.gradients[DEFAULT],
             Color::ALICE_BLUE,
         );
 
         if buttons.pressed(MouseButton::Left) {
-            closest.3.pheromons[PH1] += 1.;
+            closest.3.concentrations[DEFAULT] += 1.;
         } else if buttons.pressed(MouseButton::Right) {
-            closest.3.pheromons[PH2] += 1.;
+            closest.3.concentrations[FOOD_STORE] += 1.;
         }
     }
 
     for (e, n, ph, g) in query_nodes.iter() {
         let t = query_transform.get(e).unwrap();
-        gizmos.circle_2d(t.translation().xy(), ph.pheromons[PH1], Color::PINK);
-        gizmos.ray_2d(t.translation().xy(), g.gradients[PH1] * 2.0, Color::BLUE);
-        gizmos.circle_2d(t.translation().xy(), ph.pheromons[PH2], Color::YELLOW_GREEN);
-        gizmos.ray_2d(t.translation().xy(), g.gradients[PH2] * 2.0, Color::YELLOW);
-    }
-}
-
-fn debug_sources(
-    mut commands: Commands,
-    sources: Query<(&PheromonSource, &SourceCoord)>,
-    nav_mesh_lut: Res<NavMeshLUT>,
-    transforms: Query<&GlobalTransform, With<NavNode>>,
-) {
-    if nav_mesh_lut.is_changed() {
-        for (PheromonSource { value }, SourceCoord { x, y }) in sources.iter() {
-            let (node_id, idx) = nav_mesh_lut
-                .get_tile_entity_grid(*x as usize, *y as usize)
-                .unwrap();
-            let node = transforms.get(node_id).unwrap();
-            commands
-                .get_entity(node_id)
-                .unwrap()
-                .insert(PheromonSource { value: *value });
+        if ph.concentrations[DEFAULT] > 0. {
+            gizmos.circle_2d(
+                t.translation().xy(),
+                ph.concentrations[DEFAULT].max(0.1),
+                Color::PINK,
+            );
         }
+        gizmos.ray_2d(
+            t.translation().xy(),
+            g.gradients[DEFAULT] * 2.0,
+            Color::BLUE,
+        );
+
+        if ph.concentrations[FOOD_STORE] > 0. {
+            gizmos.circle_2d(
+                t.translation().xy(),
+                ph.concentrations[FOOD_STORE].max(0.1),
+                Color::YELLOW_GREEN,
+            );
+        }
+        gizmos.ray_2d(
+            t.translation().xy(),
+            g.gradients[FOOD_STORE] * 2.0,
+            Color::YELLOW,
+        );
+
+        if ph.concentrations[FOOD_SOURCE] > 0. {
+            gizmos.circle_2d(
+                t.translation().xy(),
+                ph.concentrations[FOOD_SOURCE].max(0.1),
+                Color::ORANGE,
+            );
+        }
+        gizmos.ray_2d(
+            t.translation().xy(),
+            g.gradients[FOOD_SOURCE] * 2.0,
+            Color::ORANGE_RED,
+        );
     }
 }

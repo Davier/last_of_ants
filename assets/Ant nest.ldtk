@@ -11,7 +11,7 @@
 	"iid": "17349940-8990-11ee-bc6b-e187bf6f7276",
 	"jsonVersion": "1.4.1",
 	"appBuildId": 471015,
-	"nextUid": 15,
+	"nextUid": 18,
 	"identifierStyle": "Capitalize",
 	"toc": [],
 	"worldLayout": "Free",
@@ -238,10 +238,45 @@
 			"pivotY": 0,
 			"fieldDefs": [
 				{
-					"identifier": "Value",
+					"identifier": "Quantity",
 					"doc": null,
 					"__type": "Float",
 					"uid": 11,
+					"type": "F_Float",
+					"isArray": false,
+					"canBeNull": true,
+					"arrayMinLength": null,
+					"arrayMaxLength": null,
+					"editorDisplayMode": "Hidden",
+					"editorDisplayScale": 1,
+					"editorDisplayPos": "Above",
+					"editorLinkStyle": "StraightArrow",
+					"editorDisplayColor": null,
+					"editorAlwaysShow": false,
+					"editorShowInWorld": true,
+					"editorCutLongValues": true,
+					"editorTextSuffix": null,
+					"editorTextPrefix": null,
+					"useForSmartColor": false,
+					"min": null,
+					"max": null,
+					"regex": null,
+					"acceptFileTypes": null,
+					"defaultOverride": null,
+					"textLanguageMode": null,
+					"symmetricalRef": false,
+					"autoChainRef": true,
+					"allowOutOfLevelRef": true,
+					"allowedRefs": "OnlySame",
+					"allowedRefsEntityUid": null,
+					"allowedRefTags": [],
+					"tilesetUid": null
+				},
+				{
+					"identifier": "Concentration",
+					"doc": null,
+					"__type": "Float",
+					"uid": 16,
 					"type": "F_Float",
 					"isArray": false,
 					"canBeNull": false,
@@ -262,7 +297,45 @@
 					"max": null,
 					"regex": null,
 					"acceptFileTypes": null,
-					"defaultOverride": { "id": "V_Float", "params": [1] },
+					"defaultOverride": null,
+					"textLanguageMode": null,
+					"symmetricalRef": false,
+					"autoChainRef": true,
+					"allowOutOfLevelRef": true,
+					"allowedRefs": "OnlySame",
+					"allowedRefsEntityUid": null,
+					"allowedRefTags": [],
+					"tilesetUid": null
+				},
+				{
+					"identifier": "SourceType",
+					"doc": null,
+					"__type": "LocalEnum.SourceType",
+					"uid": 17,
+					"type": "F_Enum(15)",
+					"isArray": false,
+					"canBeNull": false,
+					"arrayMinLength": null,
+					"arrayMaxLength": null,
+					"editorDisplayMode": "ValueOnly",
+					"editorDisplayScale": 1,
+					"editorDisplayPos": "Above",
+					"editorLinkStyle": "StraightArrow",
+					"editorDisplayColor": null,
+					"editorAlwaysShow": false,
+					"editorShowInWorld": true,
+					"editorCutLongValues": true,
+					"editorTextSuffix": null,
+					"editorTextPrefix": null,
+					"useForSmartColor": false,
+					"min": null,
+					"max": null,
+					"regex": null,
+					"acceptFileTypes": null,
+					"defaultOverride": {
+						"id": "V_String",
+						"params": ["Default"]
+					},
 					"textLanguageMode": null,
 					"symmetricalRef": false,
 					"autoChainRef": true,
@@ -423,7 +496,11 @@
 				"averageColors": "f17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af17af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18af18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf18bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19bf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf19cf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1adf1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bef1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1bff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cff1cf"
 			}
 		}
-	], "enums": [], "externalEnums": [], "levelFields": [] },
+	], "enums": [{ "identifier": "SourceType", "uid": 15, "values": [
+		{ "id": "Food", "tileRect": null, "color": 12470831 },
+		{ "id": "Storage", "tileRect": null, "color": 14120515 },
+		{ "id": "Default", "tileRect": null, "color": 15389866 }
+	], "iconTilesetUid": null, "externalRelPath": null, "externalFileChecksum": null, "tags": [] }], "externalEnums": [], "levelFields": [] },
 	"levels": [
 		{
 			"identifier": "Level_0",
@@ -500,7 +577,14 @@
 							"height": 16,
 							"defUid": 10,
 							"px": [136,500],
-							"fieldInstances": [{ "__identifier": "Value", "__type": "Float", "__value": 50, "__tile": null, "defUid": 11, "realEditorValues": [{ "id": "V_Float", "params": [50] }] }]
+							"fieldInstances": [
+								{ "__identifier": "Quantity", "__type": "Float", "__value": null, "__tile": null, "defUid": 11, "realEditorValues": [null] },
+								{ "__identifier": "Concentration", "__type": "Float", "__value": 10, "__tile": null, "defUid": 16, "realEditorValues": [{ "id": "V_Float", "params": [10] }] },
+								{ "__identifier": "SourceType", "__type": "LocalEnum.SourceType", "__value": "Storage", "__tile": null, "defUid": 17, "realEditorValues": [{
+									"id": "V_String",
+									"params": ["Storage"]
+								}] }
+							]
 						},
 						{
 							"__identifier": "Shedding",
@@ -677,6 +761,29 @@
 							"defUid": 14,
 							"px": [192,752],
 							"fieldInstances": []
+						},
+						{
+							"__identifier": "Source",
+							"__grid": [30,37],
+							"__pivot": [0,0],
+							"__tags": [],
+							"__tile": null,
+							"__smartColor": "#3E8948",
+							"__worldX": 482,
+							"__worldY": 465,
+							"iid": "1508a1e0-8990-11ee-bb5a-f92b7f230ac9",
+							"width": 16,
+							"height": 16,
+							"defUid": 10,
+							"px": [482,593],
+							"fieldInstances": [
+								{ "__identifier": "Quantity", "__type": "Float", "__value": null, "__tile": null, "defUid": 11, "realEditorValues": [] },
+								{ "__identifier": "Concentration", "__type": "Float", "__value": 10, "__tile": null, "defUid": 16, "realEditorValues": [{ "id": "V_Float", "params": [10] }] },
+								{ "__identifier": "SourceType", "__type": "LocalEnum.SourceType", "__value": "Food", "__tile": null, "defUid": 17, "realEditorValues": [{
+									"id": "V_String",
+									"params": ["Food"]
+								}] }
+							]
 						}
 					]
 				},

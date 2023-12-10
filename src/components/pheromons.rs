@@ -1,19 +1,38 @@
 use bevy::prelude::*;
-use bevy_ecs_ldtk::prelude::{LdtkEntity, LdtkFields};
+use bevy_ecs_ldtk::LevelEvent;
 
-use super::nav_mesh::NavNode;
+use crate::{components::object::ObjectCoords, resources::nav_mesh_lut::NavMeshLUT};
 
-pub const PH1: usize = 0;
-pub const PH2: usize = 1;
-pub const N_PH: usize = 2;
-pub const PH_EVAPORATION_RATE: [f32; N_PH] = [0.005; N_PH];
-pub const PH_DIFFUSION_RATE: [f32; N_PH] = [0.3, 0.03];
-pub const PH_DIFFUSION_FLOOR: [f32; N_PH] = [0.001, 0.002];
-pub const PH_FLOOR: [f32; N_PH] = [0.001, 0.005];
+use super::{nav_mesh::NavNode, object::Object};
+
+pub const DEFAULT: usize = 0;
+pub const FOOD_STORE: usize = 1;
+pub const FOOD_SOURCE: usize = 2;
+pub const N_PH: usize = 3;
+pub const N: usize = N_PH * 2;
+
+#[derive(Resource, Reflect)]
+pub struct PheromonsConfig {
+    evaporation_rate: [f32; N],
+    diffusion_rate: [f32; N],
+    diffusion_floor: [f32; N],
+    concentration_floor: [f32; N],
+}
+
+impl Default for PheromonsConfig {
+    fn default() -> Self {
+        Self {
+            evaporation_rate: [0.005; N],
+            diffusion_rate: [0.01, 0.4, 0.4, 0.01, 0.01, 0.01],
+            diffusion_floor: [0.001; N],
+            concentration_floor: [0.001; N],
+        }
+    }
+}
 
 #[derive(Bundle)]
 pub struct PheromonSourceBundle {
-    value: PheromonSource,
+    value: PheromonsSource,
     coord: SourceCoord,
 }
 
@@ -23,102 +42,117 @@ pub struct SourceCoord {
     pub y: i32,
 }
 
-// TODO associate source to navnode
 #[derive(Component, Debug, Default)]
-pub struct PheromonSource {
-    pub value: f32,
+pub struct PheromonsSource {
+    pub concentrations: Option<[f32; N]>,
 }
 
-impl LdtkEntity for PheromonSourceBundle {
-    fn bundle_entity(
-        entity_instance: &bevy_ecs_ldtk::EntityInstance,
-        _: &bevy_ecs_ldtk::prelude::LayerInstance,
-        _: Option<&Handle<Image>>,
-        _: Option<&bevy_ecs_ldtk::prelude::TilesetDefinition>,
-        _: &AssetServer,
-        _: &mut Assets<TextureAtlas>,
-    ) -> Self {
-        Self {
-            value: PheromonSource {
-                value: *entity_instance.get_float_field("Value").unwrap(),
-            },
-            coord: SourceCoord {
-                x: entity_instance.grid.x,
-                y: entity_instance.grid.y,
-            },
+impl PheromonsSource {
+    pub fn add(&mut self, kind: usize, concentration: f32) {
+        if let Some(mut concentrations) = self.concentrations {
+            concentrations[kind] += concentration;
+        } else {
+            let mut concentrations = [0.0_f32; N];
+            concentrations[kind] = concentration;
+            self.concentrations = Some(concentrations);
+        }
+    }
+
+    pub fn sub(&mut self, kind: usize, concentration: f32) {
+        if let Some(mut concentrations) = self.concentrations {
+            concentrations[kind] = (concentrations[kind] - concentration).max(0.);
+            if concentrations.iter().all(|c| *c == 0.) {
+                self.concentrations = None;
+            }
         }
     }
 }
+
 #[derive(Component)]
-pub struct PheromonsBuffer {
-    pub buffers: [f32; N_PH],
+pub struct PheromonsBuffers {
+    pub add_buffer: [f32; N],
 }
 
-impl Default for PheromonsBuffer {
+impl Default for PheromonsBuffers {
     fn default() -> Self {
         Self {
-            buffers: [0.0; N_PH],
+            add_buffer: [0.0; N],
         }
     }
 }
 
 #[derive(Component)]
 pub struct Pheromons {
-    pub pheromons: [f32; N_PH],
+    pub concentrations: [f32; N],
 }
 
 impl Default for Pheromons {
     fn default() -> Self {
         Self {
-            pheromons: [0.0; N_PH],
+            concentrations: [0.0; N],
         }
     }
 }
 
 #[derive(Component)]
-pub struct PheromonGradients {
-    pub gradients: [Vec2; N_PH],
+pub struct PheromonsGradients {
+    pub gradients: [Vec2; N],
 }
 
-impl Default for PheromonGradients {
+impl Default for PheromonsGradients {
     fn default() -> Self {
         Self {
-            gradients: [Vec2::ZERO; N_PH],
+            gradients: [Vec2::ZERO; N],
         }
     }
 }
 
-pub fn init_pheromons(mut commands: Commands, nodes: Query<(Entity, &NavNode), Added<NavNode>>) {
-    for (id, node) in nodes.iter() {
-        commands.entity(id).insert((
-            Pheromons::default(),
-            PheromonsBuffer::default(),
-            PheromonGradients::default(),
-        ));
+pub fn init_pheromons(
+    mut commands: Commands,
+    nodes: Query<(Entity, &NavNode), Added<NavNode>>,
+    mut level_events: EventReader<LevelEvent>,
+) {
+    for level_event in level_events.read() {
+        let LevelEvent::Transformed(_) = level_event else {
+            continue;
+        };
+
+        for (id, node) in nodes.iter() {
+            debug!("Init pheromons for nodes.");
+            commands.entity(id).insert((
+                Pheromons::default(),
+                PheromonsBuffers::default(),
+                PheromonsGradients::default(),
+                PheromonsSource::default(),
+            ));
+        }
     }
 }
 
-pub fn apply_sources(mut nodes: Query<(&mut Pheromons, &PheromonSource)>) {
+pub fn apply_sources(mut nodes: Query<(&mut Pheromons, &PheromonsSource)>) {
     for (mut pheromons, source) in nodes.iter_mut() {
-        pheromons.pheromons[PH1] = source.value;
+        if let Some(concentrations) = source.concentrations {
+            pheromons.concentrations = concentrations;
+        }
     }
 }
 
 pub fn diffuse_pheromons(
-    mut nav_nodes: Query<(Entity, &NavNode, &mut Pheromons), With<PheromonsBuffer>>,
-    mut pheromon_buffers: Query<&mut PheromonsBuffer, With<Pheromons>>,
+    mut nav_nodes: Query<(Entity, &NavNode, &mut Pheromons), With<PheromonsBuffers>>,
+    mut pheromon_buffers: Query<&mut PheromonsBuffers, With<Pheromons>>,
+    phcfg: Res<PheromonsConfig>,
 ) {
-    for i in 0..N_PH {
+    for i in 0..N {
         // Compute diffusion to neighbours
         for (_, node, node_pheromons) in nav_nodes.iter() {
-            let diffused = node_pheromons.pheromons[i] * PH_DIFFUSION_RATE[i];
-            if diffused > PH_DIFFUSION_FLOOR[i] {
+            let diffused = node_pheromons.concentrations[i] * phcfg.diffusion_rate[i];
+            if diffused > phcfg.diffusion_floor[i] {
                 let neighbors = node.neighbors();
                 let diffused_per_neighbor = diffused / neighbors.len() as f32;
 
                 for neighbor in neighbors {
                     let mut neighbor_buffers = pheromon_buffers.get_mut(neighbor).unwrap();
-                    neighbor_buffers.buffers[i] += diffused_per_neighbor;
+                    neighbor_buffers.add_buffer[i] += diffused_per_neighbor;
                 }
             }
         }
@@ -127,24 +161,24 @@ pub fn diffuse_pheromons(
         for (id, _, mut node_pheromons) in nav_nodes.iter_mut() {
             let mut node_buffers = pheromon_buffers.get_mut(id).unwrap();
 
-            let new_pheromon_quantity = (node_pheromons.pheromons[i]
-                * (1.0 - PH_DIFFUSION_RATE[i])
-                + node_buffers.buffers[i])
-                * (1.0 - PH_EVAPORATION_RATE[i]);
+            let new_pheromon_quantity = (node_pheromons.concentrations[i]
+                * (1.0 - phcfg.diffusion_rate[i])
+                + node_buffers.add_buffer[i])
+                * (1.0 - phcfg.evaporation_rate[i]);
 
-            if new_pheromon_quantity > PH_FLOOR[i] {
-                node_pheromons.pheromons[i] = new_pheromon_quantity;
+            if new_pheromon_quantity > phcfg.concentration_floor[i] {
+                node_pheromons.concentrations[i] = new_pheromon_quantity;
             } else {
-                node_pheromons.pheromons[i] = 0.;
+                node_pheromons.concentrations[i] = 0.;
             }
 
-            node_buffers.buffers[i] = 0.;
+            node_buffers.add_buffer[i] = 0.;
         }
     }
 }
 
 pub fn compute_gradients(
-    mut nodes: Query<(Entity, &NavNode, &Pheromons, &mut PheromonGradients)>,
+    mut nodes: Query<(Entity, &NavNode, &Pheromons, &mut PheromonsGradients)>,
     pheromons: Query<&Pheromons, With<NavNode>>,
 ) {
     let up = Vec2::new(0.0, 1.0);
@@ -154,7 +188,7 @@ pub fn compute_gradients(
     let foreground = Vec3::new(0., 0., 1.);
     let background = Vec3::new(0.0, 0.0, -1.0);
 
-    for i in 0..N_PH {
+    for i in 0..N {
         for (id, node, ph, mut gd) in nodes.iter_mut() {
             let (n, s, e, w, b) = match node {
                 NavNode::Background {
@@ -163,10 +197,10 @@ pub fn compute_gradients(
                     down,
                     right,
                 } => (
-                    pheromons.get(*up).unwrap().pheromons[i],
-                    pheromons.get(*down).unwrap().pheromons[i],
-                    pheromons.get(*right).unwrap().pheromons[i],
-                    pheromons.get(*left).unwrap().pheromons[i],
+                    pheromons.get(*up).unwrap().concentrations[i],
+                    pheromons.get(*down).unwrap().concentrations[i],
+                    pheromons.get(*right).unwrap().concentrations[i],
+                    pheromons.get(*left).unwrap().concentrations[i],
                     0.,
                 ),
                 NavNode::HorizontalEdge {
@@ -174,24 +208,51 @@ pub fn compute_gradients(
                 } => (
                     0.0,
                     0.0,
-                    pheromons.get(*right).unwrap().pheromons[i],
-                    pheromons.get(*left).unwrap().pheromons[i],
-                    pheromons.get(*back).unwrap().pheromons[i],
+                    pheromons.get(*right).unwrap().concentrations[i],
+                    pheromons.get(*left).unwrap().concentrations[i],
+                    pheromons.get(*back).unwrap().concentrations[i],
                 ),
                 NavNode::VerticalEdge { up, down, back, .. } => (
-                    pheromons.get(*up).unwrap().pheromons[i],
-                    pheromons.get(*down).unwrap().pheromons[i],
+                    pheromons.get(*up).unwrap().concentrations[i],
+                    pheromons.get(*down).unwrap().concentrations[i],
                     0.0,
                     0.0,
-                    pheromons.get(*back).unwrap().pheromons[i],
+                    pheromons.get(*back).unwrap().concentrations[i],
                 ),
             };
             // TODO: back
 
-            if ph.pheromons[i] >= n.max(s).max(e).max(w).max(b) {
+            if ph.concentrations[i] >= n.max(s).max(e).max(w).max(b) {
                 gd.gradients[i] = Vec2::ZERO;
             } else {
                 gd.gradients[i] = n * up + s * down + e * right + w * left;
+            }
+        }
+    }
+}
+
+pub fn init_sources(
+    mut commands: Commands,
+    sources: Query<(&Object, &ObjectCoords)>,
+    nav_mesh_lut: Res<NavMeshLUT>,
+    mut nodes: Query<&mut PheromonsSource, With<NavNode>>,
+    mut level_events: EventReader<LevelEvent>,
+) {
+    for level_event in level_events.read() {
+        let LevelEvent::Transformed(_) = level_event else {
+            continue;
+        };
+
+        for (object, ObjectCoords { x, y }) in sources.iter() {
+            let (node_id, _) = nav_mesh_lut
+                .get_tile_entity_grid(*x as usize, *y as usize)
+                .unwrap();
+
+            if let Ok(mut node_source) = nodes.get_mut(node_id) {
+                debug!("Init source.");
+                node_source.add(object.kind(), object.concentration);
+
+                commands.get_entity(node_id).unwrap().insert(*object);
             }
         }
     }

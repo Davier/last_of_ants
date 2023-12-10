@@ -15,8 +15,12 @@ use crate::{
 
 use super::{
     nav_mesh::NavNode,
-    pheromons::{PheromonGradients, PH1},
+    object::{Object, ObjectKind},
+    pheromons::PheromonsGradients,
 };
+
+pub mod goal;
+use self::goal::AntGoal;
 
 #[derive(Bundle)]
 pub struct LiveAntBundle {
@@ -41,8 +45,29 @@ pub struct AntMovement {
     pub position_kind: AntPositionKind,
     pub speed: f32,
     pub direction: Vec3,
-    pub current_wall: (Entity, GlobalTransform), // FIXME: use relative transforms
-    pub goal: usize,                             // TODO turn into enum
+    pub current_node: (Entity, GlobalTransform), // FIXME: use relative transforms
+    pub goal: AntGoal,
+}
+
+impl AntMovement {
+    fn step_goal(
+        &mut self,
+        /*commands: &mut Commands, FIXME breaks trait for `.chain` in lib */
+        object_id: Entity,
+        mut object: &mut Object,
+    ) {
+        match object.kind {
+            ObjectKind::Default => (),
+            ObjectKind::Storage => self.goal.step_storage(object, &mut self.direction),
+            ObjectKind::Food => {
+                self.goal.step_food(
+                    /*commands,*/ object_id,
+                    &mut object,
+                    &mut self.direction,
+                );
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
@@ -126,6 +151,7 @@ impl LiveAntBundle {
         nav_node_pos: &GlobalTransform,
         entities_holder_pos: &GlobalTransform,
         rng: &mut ThreadRng,
+        goal: AntGoal,
     ) -> Self {
         // FIXME: use common fn to place on walls?
         let mut transform = nav_node_pos.reparented_to(entities_holder_pos);
@@ -172,8 +198,8 @@ impl LiveAntBundle {
                 position_kind,
                 speed,
                 direction,
-                current_wall,
-                goal: PH1,
+                current_node: current_wall,
+                goal,
             },
             ant_style: AntStyle {
                 scale,
@@ -211,6 +237,7 @@ impl LiveAntBundle {
         entities_holder: Entity,
         entities_holder_pos: &GlobalTransform,
         rng: &mut ThreadRng,
+        goal: AntGoal,
     ) -> EntityCommands<'w, 's, 'c> {
         let mut command = commands.spawn(LiveAntBundle::new_on_nav_node(
             direction,
@@ -223,6 +250,7 @@ impl LiveAntBundle {
             nav_node_pos,
             entities_holder_pos,
             rng,
+            goal,
         ));
         command.set_parent(entities_holder);
         command
@@ -273,7 +301,7 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
-                            ant_movement.current_wall = (nav_node_entity, *wall_transform_global);
+                            ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                         NavNode::VerticalEdge { is_left_side, .. } => {
                             let wall_transform_relative =
@@ -284,7 +312,7 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
-                            ant_movement.current_wall = (nav_node_entity, *wall_transform_global);
+                            ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                     }
                 }
@@ -317,11 +345,11 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
-                            ant_movement.current_wall = (nav_node_entity, *wall_transform_global);
+                            ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                         // Otherwise update the transform of wall the ant is currently on
                         NavNode::HorizontalEdge { .. } => {
-                            ant_movement.current_wall = (nav_node_entity, *wall_transform_global);
+                            ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                     };
                 }
@@ -329,7 +357,7 @@ pub fn update_ant_position_kinds(
                 else if colliding_entities.is_empty() {
                     let new_wall_is_left_side = ant_movement.direction.x > 0.;
 
-                    let current_wall = nav_nodes.get(ant_movement.current_wall.0).unwrap();
+                    let current_wall = nav_nodes.get(ant_movement.current_node.0).unwrap();
                     let (wall_entity, wall_node, wall_transform_global) = {
                         let NavNode::HorizontalEdge { left, right, .. } = current_wall.1 else {
                             dbg!(current_wall);
@@ -350,7 +378,7 @@ pub fn update_ant_position_kinds(
                         ));
                         // A collision was missed, try to fix it
                         assert!(matches!(wall_node, NavNode::HorizontalEdge { .. }));
-                        ant_movement.current_wall = (wall_entity, *wall_transform_global);
+                        ant_movement.current_node = (wall_entity, *wall_transform_global);
                     } else {
                         let wall_transform_relative =
                             wall_transform_global.reparented_to(ant_transform_global);
@@ -360,7 +388,7 @@ pub fn update_ant_position_kinds(
                             &mut ant_transform,
                             &wall_transform_relative,
                         );
-                        ant_movement.current_wall = (wall_entity, *wall_transform_global);
+                        ant_movement.current_node = (wall_entity, *wall_transform_global);
                     }
                 }
             }
@@ -390,11 +418,11 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
-                            ant_movement.current_wall = (nav_node_entity, *wall_transform_global);
+                            ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                         // Otherwise update the transform of wall the ant is currently on
                         NavNode::VerticalEdge { .. } => {
-                            ant_movement.current_wall = (nav_node_entity, *wall_transform_global);
+                            ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                     };
                 }
@@ -402,7 +430,7 @@ pub fn update_ant_position_kinds(
                 else if colliding_entities.is_empty() {
                     let new_wall_is_up_side = ant_movement.direction.y < 0.;
 
-                    let current_wall = nav_nodes.get(ant_movement.current_wall.0).unwrap();
+                    let current_wall = nav_nodes.get(ant_movement.current_node.0).unwrap();
                     let (wall_entity, wall_node, wall_transform_global) = {
                         let NavNode::VerticalEdge { up, down, .. } = current_wall.1 else {
                             dbg!(current_wall);
@@ -423,7 +451,7 @@ pub fn update_ant_position_kinds(
                         ));
                         // A collision was missed, try to fix it
                         assert!(matches!(wall_node, NavNode::VerticalEdge { .. }));
-                        ant_movement.current_wall = (wall_entity, *wall_transform_global);
+                        ant_movement.current_node = (wall_entity, *wall_transform_global);
                     } else {
                         let wall_transform_relative =
                             wall_transform_global.reparented_to(ant_transform_global);
@@ -433,7 +461,7 @@ pub fn update_ant_position_kinds(
                             &mut ant_transform,
                             &wall_transform_relative,
                         );
-                        ant_movement.current_wall = (wall_entity, *wall_transform_global);
+                        ant_movement.current_node = (wall_entity, *wall_transform_global);
                     }
                 }
             }
@@ -448,7 +476,7 @@ pub fn update_ant_position_kinds(
             let (_, nav_node, background_entity_transform) =
                 nav_nodes.get(background_entity).unwrap();
             assert!(matches!(nav_node, NavNode::Background { .. }));
-            ant_movement.current_wall = (background_entity, *background_entity_transform);
+            ant_movement.current_node = (background_entity, *background_entity_transform);
         }
         // Update material
         *ant_material = match ant_movement.position_kind {
@@ -468,7 +496,7 @@ pub fn assert_ants(
 ) {
     let mut all_ok = true;
     for (entity, ant_movement, ant_transform_global, parent) in ants.iter() {
-        let current_nav_node = nav_nodes.get(ant_movement.current_wall.0).unwrap();
+        let current_nav_node = nav_nodes.get(ant_movement.current_node.0).unwrap();
         let ok = match ant_movement.position_kind {
             AntPositionKind::Background => matches!(current_nav_node, NavNode::Background { .. }),
             AntPositionKind::VerticalWall { .. } => {
@@ -491,22 +519,37 @@ pub fn assert_ants(
     }
 }
 
-/// Calculate desired direction of ants according to the navigation mesh
+pub fn update_ant_goal(
+    //commands: &mut Commands,
+    mut ants: Query<&mut AntMovement>,
+    mut objects: Query<(Entity, &mut Object), With<NavNode>>,
+) {
+    for mut ant_movement in ants.iter_mut() {
+        if let Ok((object_id, mut object)) = objects.get_mut(ant_movement.current_node.0) {
+            if object.kind == ant_movement.goal.kind {
+                ant_movement.step_goal(/*commands,*/ object_id, &mut object)
+            }
+        }
+    }
+}
+
+/// Calculate desired direction of ants according to the gradient of the current node
 pub fn update_ant_direction(
     mut ants: Query<&mut AntMovement>,
-    gradients: Query<&PheromonGradients>,
+    gradients: Query<&PheromonsGradients>,
 ) {
     let mut rng = rand::thread_rng();
 
     for mut ant_movement in ants.iter_mut() {
-        let closest_gradient = gradients.get(ant_movement.current_wall.0).unwrap();
+        let closest_gradient = gradients.get(ant_movement.current_node.0).unwrap();
 
         // the gradient for the pheromon the ant follows is not null: follow it
-        let goal_gradient = closest_gradient.gradients[ant_movement.goal].extend(0.);
+        let random = rng.gen_range(0.0..1.0);
+        let goal_gradient = closest_gradient.gradients[ant_movement.goal.kind as usize].extend(0.);
         if goal_gradient != Vec3::ZERO {
+            // TODO randomize a bit the direction
             ant_movement.direction = goal_gradient;
         } else {
-            let random = rng.gen_range(0.0..1.0);
             if 0.01 > random {
                 ant_movement.direction =
                     Quat::from_rotation_z(rng.gen_range(-(PI / 2.)..(PI / 2.)))
@@ -659,7 +702,7 @@ pub fn debug_ants(ants: Query<(&AntMovement, &GlobalTransform)>, mut gizmos: Giz
         gizmos.circle_2d(pos.translation().xy(), 4., color);
         gizmos.line_2d(
             pos.translation().xy(),
-            ant_movement.current_wall.1.translation().xy(),
+            ant_movement.current_node.1.translation().xy(),
             Color::WHITE,
         );
     }

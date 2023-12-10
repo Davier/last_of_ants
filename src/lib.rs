@@ -5,15 +5,20 @@ pub mod resources;
 pub mod ui;
 
 use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers};
-use bevy_ecs_ldtk::{prelude::*, systems::process_ldtk_levels};
+use bevy_ecs_ldtk::{prelude::*, systems::fire_level_transformed_events};
+use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 
 use components::{
-    ants::*,
+    ants::{
+        goal::{update_metrics, Metrics},
+        *,
+    },
     clues::place_clues,
     cocoons::CocoonBundle,
     nav_mesh::*,
-    pheromons::{init_pheromons, PheromonSourceBundle},
+    object::ObjectBundle,
+    pheromons::{init_pheromons, init_sources, PheromonsConfig},
     player::*,
     tiles::*,
     zombants::ZombAntQueenSpawnPoint,
@@ -30,8 +35,8 @@ pub struct GamePlugin;
 impl Plugin for GamePlugin {
     fn build(&self, app: &mut App) {
         app.register_ldtk_entity::<PlayerBundle>("Player")
-            .register_ldtk_entity::<PheromonSourceBundle>("Source")
             .register_ldtk_entity::<CocoonBundle>("Shedding")
+            .register_ldtk_entity::<ObjectBundle>("Source")
             // .register_ldtk_entity::<AntBundle>("Ant")
             .register_ldtk_entity::<ZombAntQueenSpawnPoint>("Zombant_Queen_Spawn_Point")
             .register_ldtk_int_cell::<TileGroundBundle>(TILE_INT_GROUND)
@@ -41,6 +46,8 @@ impl Plugin for GamePlugin {
             .insert_resource(AssetMetaCheck::Never)
             .init_resource::<NavMeshLUT>()
             .add_event::<ClueEvent>()
+            .init_resource::<PheromonsConfig>()
+            .init_resource::<Metrics>()
             .add_plugins((
                 DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites? (TODO: test)
                 LdtkPlugin,
@@ -48,13 +55,17 @@ impl Plugin for GamePlugin {
                 AntMaterialPlugin,
                 CocoonMaterialPlugin,
             ))
+            .add_plugins((
+                ResourceInspectorPlugin::<PheromonsConfig>::default(),
+                ResourceInspectorPlugin::<Metrics>::default(),
+            ))
             .add_systems(
                 PreUpdate,
                 (
-                    spawn_nav_mesh,
-                    init_pheromons.after(spawn_nav_mesh),
                     place_clues,
                     pause_if_not_focused,
+                    init_pheromons,
+                    init_sources.after(init_pheromons), // FIXME doesn't always load in the right order?
                 ),
             )
             .add_systems(
@@ -69,9 +80,15 @@ impl Plugin for GamePlugin {
                         update_ant_direction,
                         // update_ant_direction_randomly,
                         update_ant_position,
+                        update_ant_goal,
+                        update_metrics,
                     )
                         .chain(),
                 ),
+            )
+            .add_systems(
+                PostUpdate,
+                (spawn_nav_mesh.after(fire_level_transformed_events),),
             );
     }
 }

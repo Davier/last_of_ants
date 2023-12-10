@@ -3,6 +3,7 @@ pub mod clues;
 pub mod cocoons;
 pub mod dead_ants;
 pub mod nav_mesh;
+pub mod object;
 pub mod pheromons;
 pub mod player;
 pub mod tiles;
