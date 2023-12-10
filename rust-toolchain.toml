@@ -1,3 +1,0 @@
-# stable 1.74 has a bug when compiling with optimizations
-[toolchain]
-channel = "beta"
