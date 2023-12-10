@@ -15,6 +15,8 @@ pub struct NavMeshLUT {
     pub grid_width: usize,
     /// Number of tiles in Y
     pub grid_height: usize,
+    pub tile_width: usize,
+    pub tile_height: usize,
 }
 
 impl NavMeshLUT {

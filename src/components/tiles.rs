@@ -18,3 +18,12 @@ pub struct TileEmptyUndergroundBundle {
 
 #[derive(Debug, Clone, Copy, Default, Component, Reflect)]
 pub struct TileEmptyUnderground {}
+
+#[derive(Debug, Clone, Copy, Default, Reflect, Bundle, LdtkIntCell)]
+pub struct TileEmptyOvergroundBundle {
+    pub ground: TileEmptyOverground,
+    pub render_layers: RenderLayers,
+}
+
+#[derive(Debug, Clone, Copy, Default, Component, Reflect)]
+pub struct TileEmptyOverground {}

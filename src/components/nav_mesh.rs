@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, utils::HashMap};
 use bevy_ecs_ldtk::prelude::*;
 use bevy_ecs_tilemap::tiles::TileStorage;
 use bevy_rapier2d::geometry::{Collider, CollisionGroups};
@@ -7,7 +7,7 @@ use itertools::Itertools;
 use crate::{
     resources::nav_mesh_lut::NavMeshLUT, COLLISION_GROUP_ANTS, COLLISION_GROUP_DEAD_ANTS,
     COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, TILE_INT_EMPTY,
-    WALL_Z_FACTOR,
+    TILE_INT_GROUND, TILE_INT_OVERGROUND, WALL_Z_FACTOR, ANT_WALL_CLIPPING,
 };
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
@@ -28,11 +28,9 @@ pub enum NavNode {
         is_left_side: bool,
     },
     HorizontalEdge {
-        left: Entity,
-        left_kind: EdgeNeighborKind,
-        right: Entity,
-        right_kind: EdgeNeighborKind,
-        back: Entity,
+        left: EdgeNeighbor,
+        right: EdgeNeighbor,
+        back: Option<Entity>,
         is_up_side: bool,
     },
 }
@@ -61,7 +59,11 @@ impl NavNode {
             NavNode::VerticalEdge { up, down, back, .. } => vec![*up, *down, *back],
             NavNode::HorizontalEdge {
                 left, right, back, ..
-            } => vec![*left, *right, *back],
+            } => [left.get(), right.get(), *back]
+                .iter()
+                .flatten()
+                .copied()
+                .collect_vec(),
         }
     }
 }
@@ -73,6 +75,24 @@ pub enum EdgeNeighborKind {
     Outward,
 }
 
+#[derive(Debug, Clone, Copy, Reflect, PartialEq, Eq)]
+pub enum EdgeNeighbor {
+    Straight(Entity),
+    Inward(Entity),
+    Outward(Entity),
+    None,
+}
+
+impl EdgeNeighbor {
+    pub fn get(&self) -> Option<Entity> {
+        match self {
+            EdgeNeighbor::Straight(e) | EdgeNeighbor::Inward(e) | EdgeNeighbor::Outward(e) => {
+                Some(*e)
+            }
+            EdgeNeighbor::None => None,
+        }
+    }
+}
 pub fn spawn_nav_mesh(
     mut commands: Commands,
     mut level_events: EventReader<LevelEvent>,
@@ -129,8 +149,10 @@ pub fn spawn_nav_mesh(
 
         let grid_iter = (0..grid_entity.len()).map(|i| Index2d::new(i, grid_width, grid_height));
 
+        let mut entities_bundle = HashMap::new();
+
         // Spawn an entity for every edge
-        let grid_edges = grid_iter
+        let mut grid_edges = grid_iter
             .clone()
             .map(|tile| {
                 // Non empty tiles have no edges
@@ -168,7 +190,7 @@ pub fn spawn_nav_mesh(
                 | COLLISION_GROUP_ANTS
                 | COLLISION_GROUP_DEAD_ANTS,
         );
-        for tile in grid_iter {
+        for tile in grid_iter.clone() {
             // Non empty tiles have no edges
             if !grid_is_empty[tile.i()] {
                 continue;
@@ -179,121 +201,102 @@ pub fn spawn_nav_mesh(
                 .up
                 .unwrap_or_else(|| grid_entity[tile.up().unwrap().i()]);
             if let Some(up_edge) = tile_edges.up {
-                let (right_kind, right) = if let Some(edge_right) = tile_edges.right {
-                    (EdgeNeighborKind::Inward, edge_right)
+                let right = if let Some(edge_right) = tile_edges.right {
+                    EdgeNeighbor::Inward(edge_right)
                 } else {
                     let right = tile.right().unwrap();
                     if exists_and_is_empty(right.up(), grid_entity, grid_is_empty).is_some() {
-                        (
-                            EdgeNeighborKind::Outward,
-                            grid_edges[right.up().unwrap().i()].left.unwrap(),
-                        )
+                        EdgeNeighbor::Outward(grid_edges[right.up().unwrap().i()].left.unwrap())
                     } else {
-                        (
-                            EdgeNeighborKind::Straight,
-                            grid_edges[right.i()].up.unwrap(),
-                        )
+                        EdgeNeighbor::Straight(grid_edges[right.i()].up.unwrap())
                     }
                 };
-                let (left_kind, left) = if let Some(edge_left) = tile_edges.left {
-                    (EdgeNeighborKind::Inward, edge_left)
+                let left = if let Some(edge_left) = tile_edges.left {
+                    EdgeNeighbor::Inward(edge_left)
                 } else {
                     let left = tile.left().unwrap();
                     if exists_and_is_empty(left.up(), grid_entity, grid_is_empty).is_some() {
-                        (
-                            EdgeNeighborKind::Outward,
-                            grid_edges[left.up().unwrap().i()].right.unwrap(),
-                        )
+                        EdgeNeighbor::Outward(grid_edges[left.up().unwrap().i()].right.unwrap())
                     } else {
-                        (EdgeNeighborKind::Straight, grid_edges[left.i()].up.unwrap())
+                        EdgeNeighbor::Straight(grid_edges[left.i()].up.unwrap())
                     }
                 };
-                let back = grid_entity[tile.i()];
-                commands.entity(up_edge).insert((
-                    NavNode::HorizontalEdge {
-                        left,
-                        left_kind,
-                        right,
-                        right_kind,
-                        back,
-                        is_up_side: true,
-                    },
-                    TransformBundle::from_transform(Transform::from_xyz(
-                        0.,
-                        half_tile_size,
-                        half_tile_size * WALL_Z_FACTOR,
-                    )),
-                    Collider::polyline(
-                        vec![
-                            Vec2::new(-half_tile_size, 0.),
-                            Vec2::new(half_tile_size, 0.),
-                        ],
-                        None,
+                let back = Some(grid_entity[tile.i()]);
+                entities_bundle.insert(
+                    up_edge,
+                    (
+                        NavNode::HorizontalEdge {
+                            left,
+                            right,
+                            back,
+                            is_up_side: true,
+                        },
+                        TransformBundle::from_transform(Transform::from_xyz(
+                            0.,
+                            half_tile_size,
+                            half_tile_size * WALL_Z_FACTOR,
+                        )),
+                        Collider::polyline(
+                            vec![
+                                Vec2::new(-half_tile_size, 0.),
+                                Vec2::new(half_tile_size, 0.),
+                            ],
+                            None,
+                        ),
+                        wall_collision_group,
                     ),
-                    wall_collision_group,
-                ));
+                );
             }
             // Downside edge
             let down = tile_edges
                 .down
                 .unwrap_or_else(|| grid_entity[tile.down().unwrap().i()]);
             if let Some(down_edge) = tile_edges.down {
-                let (right_kind, right) = if let Some(edge_right) = tile_edges.right {
-                    (EdgeNeighborKind::Inward, edge_right)
+                let right = if let Some(edge_right) = tile_edges.right {
+                    EdgeNeighbor::Inward(edge_right)
                 } else {
                     let right = tile.right().unwrap();
                     if exists_and_is_empty(right.down(), grid_entity, grid_is_empty).is_some() {
-                        (
-                            EdgeNeighborKind::Outward,
-                            grid_edges[right.down().unwrap().i()].left.unwrap(),
-                        )
+                        EdgeNeighbor::Outward(grid_edges[right.down().unwrap().i()].left.unwrap())
                     } else {
-                        (
-                            EdgeNeighborKind::Straight,
-                            grid_edges[right.i()].down.unwrap(),
-                        )
+                        EdgeNeighbor::Straight(grid_edges[right.i()].down.unwrap())
                     }
                 };
-                let (left_kind, left) = if let Some(edge_left) = tile_edges.left {
-                    (EdgeNeighborKind::Inward, edge_left)
+                let left = if let Some(edge_left) = tile_edges.left {
+                    EdgeNeighbor::Inward(edge_left)
                 } else {
                     let left = tile.left().unwrap();
                     if exists_and_is_empty(left.down(), grid_entity, grid_is_empty).is_some() {
-                        (
-                            EdgeNeighborKind::Outward,
-                            grid_edges[left.down().unwrap().i()].right.unwrap(),
-                        )
+                        EdgeNeighbor::Outward(grid_edges[left.down().unwrap().i()].right.unwrap())
                     } else {
-                        (
-                            EdgeNeighborKind::Straight,
-                            grid_edges[left.i()].down.unwrap(),
-                        )
+                        EdgeNeighbor::Straight(grid_edges[left.i()].down.unwrap())
                     }
                 };
-                let back = grid_entity[tile.i()];
-                commands.entity(down_edge).insert((
-                    NavNode::HorizontalEdge {
-                        left,
-                        left_kind,
-                        right,
-                        right_kind,
-                        back,
-                        is_up_side: false,
-                    },
-                    TransformBundle::from_transform(Transform::from_xyz(
-                        0.,
-                        -half_tile_size,
-                        half_tile_size * WALL_Z_FACTOR,
-                    )),
-                    Collider::polyline(
-                        vec![
-                            Vec2::new(-half_tile_size, 0.),
-                            Vec2::new(half_tile_size, 0.),
-                        ],
-                        None,
+                let back = Some(grid_entity[tile.i()]);
+                entities_bundle.insert(
+                    down_edge,
+                    (
+                        NavNode::HorizontalEdge {
+                            left,
+                            right,
+                            back,
+                            is_up_side: false,
+                        },
+                        TransformBundle::from_transform(Transform::from_xyz(
+                            0.,
+                            -half_tile_size,
+                            half_tile_size * WALL_Z_FACTOR,
+                        )),
+                        Collider::polyline(
+                            vec![
+                                Vec2::new(-half_tile_size, 0.),
+                                Vec2::new(half_tile_size, 0.),
+                            ],
+                            None,
+                        ),
+                        wall_collision_group,
                     ),
-                    wall_collision_group,
-                ));
+                );
             }
             // Left-side edge
             let left = tile_edges
@@ -330,29 +333,32 @@ pub fn spawn_nav_mesh(
                     }
                 };
                 let back = grid_entity[tile.i()];
-                commands.entity(left_edge).insert((
-                    NavNode::VerticalEdge {
-                        up,
-                        up_kind,
-                        down,
-                        down_kind,
-                        back,
-                        is_left_side: true,
-                    },
-                    TransformBundle::from_transform(Transform::from_xyz(
-                        -half_tile_size,
-                        0.,
-                        half_tile_size * WALL_Z_FACTOR,
-                    )),
-                    Collider::polyline(
-                        vec![
-                            Vec2::new(0., half_tile_size),
-                            Vec2::new(0., -half_tile_size),
-                        ],
-                        None,
+                entities_bundle.insert(
+                    left_edge,
+                    (
+                        NavNode::VerticalEdge {
+                            up,
+                            up_kind,
+                            down,
+                            down_kind,
+                            back,
+                            is_left_side: true,
+                        },
+                        TransformBundle::from_transform(Transform::from_xyz(
+                            -half_tile_size,
+                            0.,
+                            half_tile_size * WALL_Z_FACTOR,
+                        )),
+                        Collider::polyline(
+                            vec![
+                                Vec2::new(0., half_tile_size),
+                                Vec2::new(0., -half_tile_size),
+                            ],
+                            None,
+                        ),
+                        wall_collision_group,
                     ),
-                    wall_collision_group,
-                ));
+                );
             }
             // Right-side edge
             let right = tile_edges
@@ -392,30 +398,34 @@ pub fn spawn_nav_mesh(
                     }
                 };
                 let back = grid_entity[tile.i()];
-                commands.entity(right_edge).insert((
-                    NavNode::VerticalEdge {
-                        up,
-                        up_kind,
-                        down,
-                        down_kind,
-                        back,
-                        is_left_side: false,
-                    },
-                    TransformBundle::from_transform(Transform::from_xyz(
-                        half_tile_size,
-                        0.,
-                        half_tile_size * WALL_Z_FACTOR,
-                    )),
-                    Collider::polyline(
-                        vec![
-                            Vec2::new(0., half_tile_size),
-                            Vec2::new(0., -half_tile_size),
-                        ],
-                        None,
+                entities_bundle.insert(
+                    right_edge,
+                    (
+                        NavNode::VerticalEdge {
+                            up,
+                            up_kind,
+                            down,
+                            down_kind,
+                            back,
+                            is_left_side: false,
+                        },
+                        TransformBundle::from_transform(Transform::from_xyz(
+                            half_tile_size,
+                            0.,
+                            half_tile_size * WALL_Z_FACTOR,
+                        )),
+                        Collider::polyline(
+                            vec![
+                                Vec2::new(0., half_tile_size),
+                                Vec2::new(0., -half_tile_size),
+                            ],
+                            None,
+                        ),
+                        wall_collision_group,
                     ),
-                    wall_collision_group,
-                ));
+                );
             }
+            // FIXME: use entities_bundle?
             commands
                 .entity(grid_entity[tile.i()])
                 .insert(NavNode::Background {
@@ -425,6 +435,128 @@ pub fn spawn_nav_mesh(
                     right,
                 });
         }
+
+        // Spawn surface edges
+        let mut surface_edges = Vec::new();
+        for tile in grid_iter.clone() {
+            if grid_int[tile.i()] != TILE_INT_OVERGROUND {
+                continue;
+            }
+            let Some(down) = tile.down() else {
+                error!("Overground tile on the bottom of the map");
+                continue;
+            };
+            let down_kind_is_ground = grid_int[down.i()] == TILE_INT_GROUND;
+            if down_kind_is_ground {
+                let edge = commands
+                    .spawn_empty()
+                    .set_parent(grid_entity[tile.i()])
+                    .id();
+                grid_edges[tile.i()].down = Some(edge);
+                surface_edges.push((tile, edge));
+            }
+        }
+
+        // Link surface edges
+        for (tile, down_edge) in surface_edges.iter() {
+            let get_down_edge = |neighbor: Option<Index2d>| {
+                neighbor
+                    .filter(|neighbor| grid_int[neighbor.i()] != TILE_INT_GROUND)
+                    .map(|neighbor| grid_edges[neighbor.i()].down)
+                    .flatten()
+            };
+            let left_edge_entity = get_down_edge(tile.left());
+            let left_edge = match left_edge_entity {
+                Some(e) => EdgeNeighbor::Straight(e),
+                None => EdgeNeighbor::None,
+            };
+            // If linking to the underground, fix their link and collider too
+            if let Some(left_edge_entity) = left_edge_entity {
+                let left_tile = tile.left().unwrap();
+
+                if grid_int[left_tile.i()] == TILE_INT_EMPTY {
+                    let left_edge_nav_node =
+                        &mut entities_bundle.get_mut(&left_edge_entity).unwrap().0;
+                    // Fix link
+                    let NavNode::HorizontalEdge { ref mut right, .. } = left_edge_nav_node else {
+                        panic!()
+                    };
+                    *right = EdgeNeighbor::Straight(*down_edge);
+                    // Fix collider
+                    let left_edge_collider = &mut entities_bundle
+                        .get_mut(&grid_edges[left_tile.i()].right.unwrap())
+                        .unwrap()
+                        .2;
+                    *left_edge_collider = Collider::polyline(
+                        vec![
+                            Vec2::new(0., half_tile_size),
+                            Vec2::new(0., half_tile_size - ANT_WALL_CLIPPING + 0.1),
+                        ],
+                        None,
+                    );
+                }
+            }
+            let right_edge_entity = get_down_edge(tile.right());
+            let right_edge = match right_edge_entity {
+                Some(e) => EdgeNeighbor::Straight(e),
+                None => EdgeNeighbor::None,
+            };
+            // If linking to the underground, fix their link and collider too
+            if let Some(right_edge_entity) = right_edge_entity {
+                let right_tile = tile.right().unwrap();
+
+                if grid_int[right_tile.i()] == TILE_INT_EMPTY {
+                    let right_edge_nav_node =
+                        &mut entities_bundle.get_mut(&right_edge_entity).unwrap().0;
+                    // Fix link
+                    let NavNode::HorizontalEdge { ref mut left, .. } = right_edge_nav_node else {
+                        panic!()
+                    };
+                    *left = EdgeNeighbor::Straight(*down_edge);
+                    // Fix collider
+                    let right_edge_collider = &mut entities_bundle
+                        .get_mut(&grid_edges[right_tile.i()].left.unwrap())
+                        .unwrap()
+                        .2;
+                    *right_edge_collider = Collider::polyline(
+                        vec![
+                            Vec2::new(0., half_tile_size),
+                            Vec2::new(0., half_tile_size - ANT_WALL_CLIPPING + 0.1),
+                        ],
+                        None,
+                    );
+                }
+            }
+
+            entities_bundle.insert(
+                *down_edge,
+                (
+                    NavNode::HorizontalEdge {
+                        left: left_edge,
+                        right: right_edge,
+                        back: None,
+                        is_up_side: false,
+                    },
+                    TransformBundle::from_transform(Transform::from_xyz(
+                        0.,
+                        -half_tile_size,
+                        half_tile_size * WALL_Z_FACTOR,
+                    )),
+                    Collider::polyline(
+                        vec![
+                            Vec2::new(-half_tile_size, 0.),
+                            Vec2::new(half_tile_size, 0.),
+                        ],
+                        None,
+                    ),
+                    wall_collision_group,
+                ),
+            );
+        }
+        
+        // Insert the bundles
+        commands.insert_or_spawn_batch(entities_bundle);
+
         // Save the look-up tables
         commands.insert_resource(NavMeshLUT {
             grid_entity: grid_entity_vec,
@@ -432,6 +564,8 @@ pub fn spawn_nav_mesh(
             grid_is_empty: grid_is_empty_vec,
             grid_width: grid_width as usize,
             grid_height: grid_height as usize,
+            tile_width: *tile_size as usize,
+            tile_height: *tile_size as usize,
         })
     }
 }
@@ -470,9 +604,15 @@ pub fn debug_nav_mesh(
             NavNode::HorizontalEdge {
                 left, right, back, ..
             } => {
-                line_between(id, *left, Color::YELLOW, &query_transform, &mut gizmos);
-                line_between(id, *right, Color::YELLOW, &query_transform, &mut gizmos);
-                line_between(id, *back, Color::YELLOW, &query_transform, &mut gizmos);
+                if let Some(left) = left.get() {
+                    line_between(id, left, Color::YELLOW, &query_transform, &mut gizmos);
+                }
+                if let Some(right) = right.get() {
+                    line_between(id, right, Color::YELLOW, &query_transform, &mut gizmos);
+                }
+                if let Some(back) = back {
+                    line_between(id, *back, Color::YELLOW, &query_transform, &mut gizmos);
+                }
             }
         }
     }
@@ -510,7 +650,7 @@ fn exists_and_is_empty(
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Index2d {
     index: i32,
     grid_width: i32,

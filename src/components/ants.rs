@@ -320,14 +320,24 @@ pub fn update_ant_position_kinds(
             AntPositionKind::HorizontalWall { is_up_side } => {
                 // Check if the ant has gone into the background
                 if ant_transform.translation.z <= ANT_WALL_CLIPPING {
-                    // Offset from the wall
-                    // TODO: offset from all colliding walls?
-                    ant_transform.translation.y += if is_up_side {
-                        -2. * ANT_WALL_CLIPPING
-                    } else {
-                        2. * ANT_WALL_CLIPPING
+                    let NavNode::HorizontalEdge { back, .. } =
+                        nav_nodes.get(ant_movement.current_node.0).unwrap().1
+                    else {
+                        panic!()
                     };
-                    place_ant_on_background(&mut ant_movement, &mut ant_transform);
+                    if back.is_some() {
+                        // Offset from the wall
+                        // TODO: offset from all colliding walls?
+                        ant_transform.translation.y += if is_up_side {
+                            -2. * ANT_WALL_CLIPPING
+                        } else {
+                            2. * ANT_WALL_CLIPPING
+                        };
+                        place_ant_on_background(&mut ant_movement, &mut ant_transform);
+                    } else {
+                        // On the surface, the ant cannot go to the background
+                        ant_transform.translation.z = 0.;
+                    }
                 }
                 // Check the closest colliding wall
                 else if let Some((nav_node_entity, nav_node, wall_transform_global)) =
@@ -364,7 +374,8 @@ pub fn update_ant_position_kinds(
                             panic!(); // FIXME
                         };
                         let neighbor = if new_wall_is_left_side { right } else { left };
-                        nav_nodes.get(*neighbor).unwrap()
+                        let neighbor = neighbor.get().unwrap(); // If there is no neighbor, there should be a collider to block the ant
+                        nav_nodes.get(neighbor).unwrap()
                     };
                     if !matches!(wall_node, NavNode::VerticalEdge { is_left_side, .. } if *is_left_side == new_wall_is_left_side)
                     {
@@ -579,7 +590,11 @@ pub fn update_ant_direction_randomly(mut ants: Query<&mut AntMovement>, time: Re
 }
 
 /// Move ants according to their direction and the constraints of [AntPositionKind]
-pub fn update_ant_position(mut ants: Query<(&AntMovement, &mut Transform)>, time: Res<Time>) {
+pub fn update_ant_position(
+    mut ants: Query<(&AntMovement, &mut Transform)>,
+    time: Res<Time>,
+    nav_mesh_lut: Res<NavMeshLUT>,
+) {
     let dt = time.delta_seconds();
     for (ant_movement, mut ant_transform) in ants.iter_mut() {
         let dt = dt.min(TILE_SIZE / 4. / ant_movement.speed); // Clamp to avoid going through walls when lagging
@@ -613,6 +628,15 @@ pub fn update_ant_position(mut ants: Query<(&AntMovement, &mut Transform)>, time
                 }
             }
         }
+        // Prevent from going out of the map
+        ant_transform.translation.x = ant_transform.translation.x.clamp(
+            0.,
+            (nav_mesh_lut.tile_width * nav_mesh_lut.grid_width) as f32,
+        );
+        ant_transform.translation.y = ant_transform.translation.y.clamp(
+            0.,
+            (nav_mesh_lut.tile_height * nav_mesh_lut.grid_height) as f32,
+        );
     }
 }
 

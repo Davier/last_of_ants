@@ -41,6 +41,7 @@ impl Plugin for GamePlugin {
             .register_ldtk_entity::<ZombAntQueenSpawnPoint>("Zombant_Queen_Spawn_Point")
             .register_ldtk_int_cell::<TileGroundBundle>(TILE_INT_GROUND)
             .register_ldtk_int_cell::<TileEmptyUndergroundBundle>(TILE_INT_EMPTY)
+            .register_ldtk_int_cell::<TileEmptyOvergroundBundle>(TILE_INT_OVERGROUND)
             .register_type::<components::nav_mesh::NavNode>()
             .register_type::<Clues>()
             .insert_resource(AssetMetaCheck::Never)
@@ -103,6 +104,7 @@ pub const ANT_WALL_CLIPPING: f32 = 0.5;
 
 pub const TILE_INT_GROUND: i32 = 1;
 pub const TILE_INT_EMPTY: i32 = 2;
+pub const TILE_INT_OVERGROUND: i32 = 3;
 pub const TILE_SIZE: f32 = 16.;
 
 pub const COCOON_ROOMS: &[u8] = &[0, 1, 2];

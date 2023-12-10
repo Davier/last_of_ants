@@ -208,9 +208,15 @@ pub fn compute_gradients(
                 } => (
                     0.0,
                     0.0,
-                    pheromons.get(*right).unwrap().concentrations[i],
-                    pheromons.get(*left).unwrap().concentrations[i],
-                    pheromons.get(*back).unwrap().concentrations[i],
+                    right
+                        .get()
+                        .map(|right| pheromons.get(right).unwrap().concentrations[i])
+                        .unwrap_or(0.0),
+                    left.get()
+                        .map(|left| pheromons.get(left).unwrap().concentrations[i])
+                        .unwrap_or(0.0),
+                    back.map(|back| pheromons.get(back).unwrap().concentrations[i])
+                        .unwrap_or(0.0),
                 ),
                 NavNode::VerticalEdge { up, down, back, .. } => (
                     pheromons.get(*up).unwrap().concentrations[i],
