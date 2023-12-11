@@ -1,12 +1,22 @@
-use crate::{render::render_ant::AntMaterialBundle, resources::nav_mesh_lut::NavMeshLUT};
-use bevy::{prelude::*, render::view::RenderLayers};
+use std::f32::consts::PI;
+
+use crate::{
+    render::render_ant::{AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D},
+    resources::nav_mesh_lut::NavMeshLUT,
+    ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION,
+    COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE,
+    WALL_Z_FACTOR,
+};
+use bevy::{ecs::system::EntityCommands, prelude::*, render::view::RenderLayers};
 use bevy_ecs_ldtk::LdtkEntity;
 use bevy_rapier2d::prelude::*;
-use rand::{seq::IteratorRandom, thread_rng, Rng};
+use rand::{rngs::ThreadRng, seq::IteratorRandom, thread_rng, Rng};
 
 use super::{
-    ants::{goal::AntGoal, *, movement::AntMovement},
+    ants::{goal::AntGoal, movement::AntMovement, *},
+    dead_ants::DeadAnt,
     nav_mesh::NavNode,
+    pheromones::{PheromoneKind, Pheromons, PheromonsConfig},
 };
 
 #[derive(Bundle)]
@@ -27,6 +37,126 @@ pub struct ZombAntBundle {
 #[derive(Debug, Clone, Copy, Component, Reflect)]
 pub struct ZombAnt {}
 
+impl ZombAntBundle {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_on_nav_node(
+        direction: Vec3,
+        speed: f32,
+        scale: f32,
+        color_primary_kind: AntColorKind,
+        color_secondary_kind: AntColorKind,
+        nav_node_entity: Entity,
+        nav_node: &NavNode,
+        nav_node_pos: &GlobalTransform,
+        entities_holder_pos: &GlobalTransform,
+        rng: &mut ThreadRng,
+        goal: AntGoal,
+    ) -> Self {
+        // FIXME: use common fn to place on walls?
+        let mut transform = nav_node_pos.reparented_to(entities_holder_pos);
+        let mut is_side = true;
+        let position_kind = match nav_node {
+            NavNode::Background { .. } => {
+                transform.translation.z = 0.;
+                is_side = false;
+                AntPositionKind::Background
+            }
+            NavNode::VerticalEdge { is_left_side, .. } => {
+                transform.translation.z = TILE_SIZE * WALL_Z_FACTOR;
+                transform.translation.x +=
+                    (ANT_SIZE.x / 2. - ANT_WALL_CLIPPING) * if *is_left_side { 1. } else { -1. };
+                AntPositionKind::VerticalWall {
+                    is_left_side: *is_left_side,
+                }
+            }
+            NavNode::HorizontalEdge { is_up_side, .. } => {
+                transform.translation.z = TILE_SIZE * WALL_Z_FACTOR;
+                transform.translation.y +=
+                    (ANT_SIZE.y / 2. - ANT_WALL_CLIPPING) * if *is_up_side { -1. } else { 1. };
+                AntPositionKind::HorizontalWall {
+                    is_up_side: *is_up_side,
+                }
+            }
+        };
+        let current_wall = (nav_node_entity, *nav_node_pos);
+        let material = AntMaterialBundle {
+            mesh: ANT_MESH2D,
+            material: if is_side {
+                ANT_MATERIAL_SIDE
+            } else {
+                ANT_MATERIAL_TOP
+            },
+            transform,
+            ..default()
+        };
+        let color_primary = color_primary_kind.generate_color(rng);
+        let color_secondary = color_secondary_kind.generate_color(rng);
+        Self {
+            zombant: ZombAnt {},
+            ant_movement: AntMovement {
+                position_kind,
+                speed,
+                direction,
+                current_node: current_wall,
+                goal,
+                last_direction_update: 0.0,
+            },
+            ant_style: AntStyle {
+                scale,
+                color_primary,
+                color_primary_kind,
+                color_secondary,
+                color_secondary_kind,
+                animation_phase: rng.gen::<f32>() * 2. * PI,
+            },
+            material,
+            collider: Collider::cuboid(ANT_SIZE.x / 2., ANT_SIZE.y / 2.),
+            sensor: Sensor,
+            active_events: ActiveEvents::COLLISION_EVENTS,
+            active_collisions: ActiveCollisionTypes::STATIC_STATIC,
+            colliding_entities: Default::default(),
+            collision_groups: CollisionGroups::new(
+                COLLISION_GROUP_ANTS,
+                COLLISION_GROUP_PLAYER_SENSOR | COLLISION_GROUP_WALLS | COLLISION_GROUP_EXPLOSION,
+            ),
+            render_layers: RENDERLAYER_ANTS,
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn spawn_on_nav_node<'c, 'w, 's>(
+        commands: &'c mut Commands<'w, 's>,
+        direction: Vec3,
+        speed: f32,
+        scale: f32,
+        color_primary_kind: AntColorKind,
+        color_secondary_kind: AntColorKind,
+        nav_node_entity: Entity,
+        nav_node: &NavNode,
+        nav_node_pos: &GlobalTransform,
+        entities_holder: Entity,
+        entities_holder_pos: &GlobalTransform,
+        rng: &mut ThreadRng,
+        goal: AntGoal,
+    ) -> EntityCommands<'w, 's, 'c> {
+        let mut command = commands.spawn(ZombAntBundle::new_on_nav_node(
+            direction,
+            speed,
+            scale,
+            color_primary_kind,
+            color_secondary_kind,
+            nav_node_entity,
+            nav_node,
+            nav_node_pos,
+            entities_holder_pos,
+            rng,
+            goal,
+        ));
+        command.set_parent(entities_holder);
+        command
+    }
+}
+
 #[derive(Bundle)]
 pub struct ZombAntQueenBundle {
     pub zombant_queen: ZombAntQueen,
@@ -42,8 +172,10 @@ pub struct ZombAntQueenBundle {
     pub render_layers: RenderLayers,
 }
 
-#[derive(Debug, Clone, Copy, Component, Reflect)]
-pub struct ZombAntQueen;
+#[derive(Default, Debug, Clone, Copy, Component, Reflect)]
+pub struct ZombAntQueen {
+    pub holds: f32,
+}
 
 #[derive(Debug, Default, Clone, Copy, Component, Reflect, LdtkEntity)]
 pub struct ZombAntQueenSpawnPoint {}
@@ -92,7 +224,7 @@ pub fn spawn_zombant_queen(
     );
     commands
         .spawn(ZombAntQueenBundle {
-            zombant_queen: ZombAntQueen,
+            zombant_queen: ZombAntQueen::default(),
             ant_movement: ant_bundle.ant_movement,
             ant_style: ant_bundle.ant_style,
             material: ant_bundle.material,
@@ -105,4 +237,27 @@ pub fn spawn_zombant_queen(
             render_layers: ant_bundle.render_layers,
         })
         .set_parent(entities_holder.get());
+}
+
+pub fn update_zombants_deposit(
+    zombants: Query<&AntMovement, With<DeadAnt>>,
+    mut nodes: Query<&mut Pheromons>,
+    phcfg: Res<PheromonsConfig>,
+) {
+    for ant_movement in zombants.iter() {
+        let mut pheromones = nodes.get_mut(ant_movement.current_node.0).unwrap();
+        pheromones.concentrations[PheromoneKind::Zombant as usize] += phcfg.zombant_deposit;
+    }
+}
+
+pub fn update_zombqueen_source(
+    queen: Query<&AntMovement, With<ZombAntQueen>>,
+    mut nodes: Query<&mut Pheromons>,
+    //mut nodes: Query<&mut PheromonsSource>,
+    phcfg: Res<PheromonsConfig>,
+) {
+    if let Ok(queen_movement) = queen.get_single() {
+        let mut pheromones = nodes.get_mut(queen_movement.current_node.0).unwrap();
+        pheromones.concentrations[PheromoneKind::Zombqueen as usize] += phcfg.zombqueen_source;
+    }
 }

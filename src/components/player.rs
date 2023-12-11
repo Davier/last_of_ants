@@ -11,7 +11,7 @@ use crate::{
 };
 
 use super::{
-    ants::{ AntPositionKind, AntStyle, movement::AntMovement},
+    ants::{movement::AntMovement, AntPositionKind, AntStyle},
     clues::Clue,
     dead_ants::DeadAntBundle,
     nav_mesh::NavNode,

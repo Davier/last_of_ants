@@ -1,19 +1,13 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::{LdtkEntity, LdtkFields};
 
+use super::pheromones::PheromoneKind;
+
 #[derive(Clone, Default, Debug, Copy, Component, Reflect)]
 pub struct Object {
-    pub kind: ObjectKind,
+    pub kind: PheromoneKind,
     pub quantity: Option<f32>,
     pub concentration: f32,
-}
-
-#[derive(Default, Debug, Clone, Copy, Reflect, PartialEq, Eq)]
-pub enum ObjectKind {
-    #[default]
-    Default = 0,
-    Storage = 1,
-    Food = 2,
 }
 
 impl Object {
@@ -47,9 +41,9 @@ impl LdtkEntity for ObjectBundle {
             .unwrap()
             .as_str()
         {
-            "Food" => ObjectKind::Food,
-            "Storage" => ObjectKind::Storage,
-            _ => ObjectKind::Default,
+            "Food" => PheromoneKind::Food,
+            "Storage" => PheromoneKind::Storage,
+            _ => PheromoneKind::Default,
         };
 
         let quantity = *entity_instance.get_maybe_float_field("Quantity").unwrap();

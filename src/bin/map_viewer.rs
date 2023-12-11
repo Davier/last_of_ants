@@ -9,14 +9,13 @@ use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use itertools::Itertools;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, goal::AntGoal, AntColorKind, LiveAnt, LiveAntBundle},
+        ants::{debug_ants, goal::AntGoal, job::Job, AntColorKind, LiveAnt, LiveAntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
-        object::ObjectKind,
-        pheromons::{
-            apply_sources, compute_gradients, diffuse_pheromons, Pheromons, PheromonsGradients,
-            DEFAULT, FOOD_SOURCE, FOOD_STORE,
+        pheromones::{
+            apply_sources, compute_gradients, diffuse_pheromons, PheromoneKind, Pheromons,
+            PheromonsConfig, PheromonsGradients, N_PHEROMONE_KINDS,
         },
-        zombants::spawn_zombant_queen,
+        zombants::{spawn_zombant_queen, ZombAnt, ZombAntBundle},
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     render::{MainCamera2d, MainCamera2dBundle},
@@ -114,7 +113,7 @@ fn spawn_ants_on_navmesh(
         .find(|(_, name, _)| name.as_str() == "Entities")
         .unwrap();
 
-    for _ in 0..10 {
+    for _ in 0..30 {
         let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
         else {
             return;
@@ -127,15 +126,14 @@ fn spawn_ants_on_navmesh(
         )
         .normalize();
         let color_primary_kind = AntColorKind::YELLOW;
-        let color_secondary_kind =
-            AntColorKind::new_random_from_primary(&mut rng, &color_primary_kind);
+        let color_secondary_kind = AntColorKind::YELLOW;
         // let color_primary_kind = AntColorKind::BLACK;
         // let color_secondary_kind = AntColorKind::BLACK;
         // let scale = rng.gen::<f32>() + 0.5;
         let scale = 1.; // TODO
         let speed = 40.;
         let goal = AntGoal {
-            kind: ObjectKind::Default,
+            job: Job::Food,
             holds: 0.,
         };
         LiveAntBundle::spawn_on_nav_node(
@@ -154,6 +152,43 @@ fn spawn_ants_on_navmesh(
             goal,
         );
         // .insert(MovementGoal(_id));
+    }
+
+    for _ in 0..10 {
+        let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
+        else {
+            return;
+        };
+
+        let direction = Vec3::new(
+            rng.gen::<f32>() - 0.5,
+            rng.gen::<f32>() - 0.5,
+            rng.gen::<f32>() - 0.5,
+        )
+        .normalize();
+        let color_primary_kind = AntColorKind::WHITE;
+        let color_secondary_kind = AntColorKind::WHITE;
+        let scale = 1.; // TODO
+        let speed = 40.;
+        let goal = AntGoal {
+            job: Job::Thief,
+            holds: 0.,
+        };
+        ZombAntBundle::spawn_on_nav_node(
+            &mut commands,
+            direction,
+            speed,
+            scale,
+            color_primary_kind,
+            color_secondary_kind,
+            nav_node_entity,
+            nav_node,
+            nav_node_pos,
+            entities_holder,
+            entities_holder_pos,
+            &mut rng,
+            goal,
+        );
     }
 }
 
@@ -225,6 +260,7 @@ fn camera_movement(
 fn debug_pheromons(
     mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonsGradients)>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
+    phcfg: Res<PheromonsConfig>,
     mut gizmos: Gizmos,
 
     buttons: Res<Input<MouseButton>>,
@@ -257,56 +293,33 @@ fn debug_pheromons(
         gizmos.circle_2d(closest.1, 0.5, Color::RED);
         gizmos.ray_2d(
             cursor_world_position,
-            closest.4.gradients[DEFAULT].xy(),
+            closest.4.gradients[PheromoneKind::Default as usize].xy(),
             Color::ALICE_BLUE,
         );
 
         if buttons.pressed(MouseButton::Left) {
-            closest.3.concentrations[DEFAULT] += 1.;
+            closest.3.concentrations[PheromoneKind::Default as usize] += 1.;
         } else if buttons.pressed(MouseButton::Right) {
-            closest.3.concentrations[FOOD_STORE] += 1.;
+            closest.3.concentrations[PheromoneKind::Storage as usize] += 1.;
         }
     }
 
     for (e, n, ph, g) in query_nodes.iter() {
         let t = query_transform.get(e).unwrap();
-        if ph.concentrations[DEFAULT] > 0. {
-            gizmos.circle_2d(
-                t.translation().xy(),
-                ph.concentrations[DEFAULT].max(0.1),
-                Color::PINK,
-            );
-        }
-        gizmos.ray_2d(
-            t.translation().xy(),
-            g.gradients[DEFAULT].xy() * 2.0,
-            Color::BLUE,
-        );
 
-        if ph.concentrations[FOOD_STORE] > 0. {
-            gizmos.circle_2d(
+        for i in 0..N_PHEROMONE_KINDS {
+            if ph.concentrations[i] > 0. {
+                gizmos.circle_2d(
+                    t.translation().xy(),
+                    ph.concentrations[i].max(0.5),
+                    phcfg.color[i].0,
+                );
+            }
+            gizmos.ray_2d(
                 t.translation().xy(),
-                ph.concentrations[FOOD_STORE].max(0.1),
-                Color::YELLOW_GREEN,
+                g.gradients[i].xy() * 2.0,
+                phcfg.color[i].1,
             );
         }
-        gizmos.ray_2d(
-            t.translation().xy(),
-            g.gradients[FOOD_STORE].xy() * 2.0,
-            Color::YELLOW,
-        );
-
-        if ph.concentrations[FOOD_SOURCE] > 0. {
-            gizmos.circle_2d(
-                t.translation().xy(),
-                ph.concentrations[FOOD_SOURCE].max(0.1),
-                Color::ORANGE,
-            );
-        }
-        gizmos.ray_2d(
-            t.translation().xy(),
-            g.gradients[FOOD_SOURCE].xy() * 2.0,
-            Color::ORANGE_RED,
-        );
     }
 }

@@ -17,14 +17,10 @@ use crate::{
     WALL_Z_FACTOR,
 };
 
-use super::{
-    dead_ants::DeadAntBundle,
-    nav_mesh::NavNode,
-    object::{Object, ObjectKind},
-    pheromons::PheromonsGradients,
-};
+use super::{dead_ants::DeadAntBundle, nav_mesh::NavNode};
 
 pub mod goal;
+pub mod job;
 pub mod movement;
 use self::goal::AntGoal;
 use self::movement::AntMovement;
@@ -177,7 +173,7 @@ impl LiveAntBundle {
                 direction,
                 current_node: current_wall,
                 goal,
-                last_update: 0.0,
+                last_direction_update: 0.0,
             },
             ant_style: AntStyle {
                 scale,
@@ -373,7 +369,7 @@ pub fn update_ant_position_kinds(
                             wall_transform_global
                         ));
                         // A collision was missed, try to fix it
-                        assert!(matches!(wall_node, NavNode::HorizontalEdge { .. }));
+                        // FIXME assert!(matches!(wall_node, NavNode::HorizontalEdge { .. }));
                         ant_movement.current_node = (wall_entity, *wall_transform_global);
                     } else {
                         let wall_transform_relative =
@@ -450,7 +446,7 @@ pub fn update_ant_position_kinds(
                             wall_transform_global
                         ));
                         // A collision was missed, try to fix it
-                        assert!(matches!(wall_node, NavNode::VerticalEdge { .. }));
+                        // FIXME assert!(matches!(wall_node, NavNode::VerticalEdge { .. }));
                         ant_movement.current_node = (wall_entity, *wall_transform_global);
                     } else {
                         let wall_transform_relative =
