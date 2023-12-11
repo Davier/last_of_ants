@@ -5,6 +5,10 @@ pub mod resources;
 pub mod ui;
 
 use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers};
+use bevy_asset_loader::{
+    asset_collection::AssetCollection,
+    loading_state::{LoadingState, LoadingStateAppExt},
+};
 use bevy_ecs_ldtk::{prelude::*, systems::fire_level_transformed_events};
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_rapier2d::prelude::*;
@@ -22,7 +26,7 @@ use components::{
     pheromons::{init_pheromons, init_sources, PheromonsConfig},
     player::*,
     tiles::*,
-    zombants::ZombAntQueenSpawnPoint,
+    zombants::{spawn_zombant_queen, ZombAntQueenSpawnPoint},
 };
 use helpers::pause_if_not_focused;
 use render::{
@@ -65,25 +69,42 @@ impl Plugin for GamePlugin {
                 ResourceInspectorPlugin::<PheromonsConfig>::default(),
                 ResourceInspectorPlugin::<Metrics>::default(),
             ))
+            .add_state::<AppState>()
+            .add_loading_state(
+                LoadingState::new(AppState::Loading)
+                    .continue_to_state(AppState::ProcessingNavNodes),
+            )
+            .add_collection_to_loading_state::<_, AllAssets>(AppState::Loading)
+            .insert_resource(LevelSelection::index(0))
+            .add_systems(OnExit(AppState::Loading), spawn_ldtk_level)
             .add_systems(
-                PreUpdate,
+                Update,
+                (spawn_nav_mesh).run_if(in_state(AppState::ProcessingNavNodes)),
+            )
+            .add_systems(
+                OnEnter(AppState::ProcessingOthers),
                 (
+                    // One-shot systems that need nav nodes
+                    spawn_player_sensor,
+                    spawn_zombant_queen,
                     place_clues,
-                    pause_if_not_focused,
-                    init_pheromons.after(fire_level_transformed_events),
-                    init_sources.after(init_pheromons), // FIXME doesn't always load in the right order?
+                    (init_pheromons, init_sources).chain(),
                 ),
             )
             .add_systems(
                 Update,
+                start_playing.run_if(in_state(AppState::ProcessingOthers)),
+            )
+            .add_systems(
+                Update,
                 (
+                    pause_if_not_focused,
                     update_player_sensor,
-                    spawn_player_sensor,
                     clues_receive_events,
                     ant_explosion_collision,
                     (
                         update_ant_position_kinds,
-                        assert_ants, // TODO: disable in release?
+                        // assert_ants, // TODO: disable in release?
                         update_ant_direction,
                         // update_ant_direction_randomly,
                         update_ant_position,
@@ -91,13 +112,42 @@ impl Plugin for GamePlugin {
                         update_metrics,
                     )
                         .chain(),
-                ),
-            )
-            .add_systems(
-                PostUpdate,
-                spawn_nav_mesh.after(fire_level_transformed_events),
+                )
+                    .run_if(in_state(AppState::Playing)),
             );
     }
+}
+
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
+pub enum AppState {
+    #[default]
+    Loading,
+    ProcessingNavNodes,
+    ProcessingOthers,
+    Playing,
+}
+
+#[derive(AssetCollection, Resource)]
+pub struct AllAssets {
+    #[asset(path = "textures/explosion_spritesheet.png")]
+    pub explosion: Handle<Image>,
+    #[asset(path = "textures/owlet_spritesheet.png")]
+    pub player: Handle<Image>,
+    #[asset(path = "Tiles_64x64.png")]
+    pub tilemap: Handle<Image>,
+    #[asset(path = "Ant nest.ldtk")]
+    pub map: Handle<LdtkProject>,
+}
+
+pub fn spawn_ldtk_level(mut commands: Commands, assets: Res<AllAssets>) {
+    commands.spawn(LdtkWorldBundle {
+        ldtk_handle: assets.map.clone(),
+        ..Default::default()
+    });
+}
+
+pub fn start_playing(mut next_state: ResMut<NextState<AppState>>) {
+    next_state.set(AppState::Playing);
 }
 
 pub const PIXELS_PER_METER: f32 = 16.;

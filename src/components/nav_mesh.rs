@@ -7,7 +7,7 @@ use itertools::Itertools;
 use crate::{
     resources::nav_mesh_lut::NavMeshLUT, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS,
     COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_PLAYER_SENSOR,
-    COLLISION_GROUP_WALLS, TILE_INT_EMPTY, TILE_INT_GROUND, TILE_INT_OVERGROUND, WALL_Z_FACTOR,
+    COLLISION_GROUP_WALLS, TILE_INT_EMPTY, TILE_INT_GROUND, TILE_INT_OVERGROUND, WALL_Z_FACTOR, AppState,
 };
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
@@ -99,6 +99,7 @@ pub fn spawn_nav_mesh(
     ldtk_project_assets: Res<Assets<LdtkProject>>,
     ldtk_projects: Query<&Handle<LdtkProject>>,
     tile_storage: Query<(&TileStorage, &Name)>,
+    mut next_state: ResMut<NextState<AppState>>,
 ) {
     for level_event in level_events.read() {
         let LevelEvent::Transformed(level_iid) = level_event else {
@@ -566,7 +567,9 @@ pub fn spawn_nav_mesh(
             grid_height: grid_height as usize,
             tile_width: *tile_size as usize,
             tile_height: *tile_size as usize,
-        })
+        });
+
+        next_state.set(AppState::ProcessingOthers);
     }
 }
 

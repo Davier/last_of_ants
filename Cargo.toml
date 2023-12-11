@@ -18,6 +18,7 @@ codegen-units = 1
 [dependencies]
 bevy = "0.12.1"
 bevy-inspector-egui = "0.21.0"
+bevy_asset_loader = "0.18.0"
 bevy_ecs_ldtk = "0.8.0"
 bevy_ecs_tilemap = "0.12"
 bevy_egui = "0.23.0"

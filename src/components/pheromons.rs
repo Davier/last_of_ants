@@ -109,21 +109,14 @@ impl Default for PheromonsGradients {
 pub fn init_pheromons(
     mut commands: Commands,
     nodes: Query<(Entity, &NavNode), Added<NavNode>>,
-    mut level_events: EventReader<LevelEvent>,
 ) {
-    for level_event in level_events.read() {
-        let LevelEvent::Transformed(_) = level_event else {
-            continue;
-        };
-
-        for (id, node) in nodes.iter() {
-            commands.entity(id).insert((
-                Pheromons::default(),
-                PheromonsBuffers::default(),
-                PheromonsGradients::default(),
-                PheromonsSource::default(),
-            ));
-        }
+    for (id, node) in nodes.iter() {
+        commands.entity(id).insert((
+            Pheromons::default(),
+            PheromonsBuffers::default(),
+            PheromonsGradients::default(),
+            PheromonsSource::default(),
+        ));
     }
 }
 
@@ -295,7 +288,7 @@ pub fn init_sources(
     for (tile_id, object, ObjectCoords { x, y }) in sources.iter() {
         let (node_id, _) = nav_mesh_lut
             .get_tile_entity_grid(*x as usize, *y as usize)
-            .unwrap();
+            .unwrap(); // FIXME: bad order
 
         if let Ok(mut node_source) = nodes.get_mut(node_id) {
             node_source.add(object.kind(), object.concentration);

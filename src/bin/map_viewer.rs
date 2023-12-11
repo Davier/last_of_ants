@@ -63,11 +63,6 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     camera.camera.transform = Transform::from_xyz(500., 500., 0.);
     commands.spawn(camera);
 
-    commands.spawn(LdtkWorldBundle {
-        ldtk_handle: asset_server.load("Ant nest.ldtk"),
-        ..Default::default()
-    });
-
     commands
         .spawn(TextBundle::from_sections([
             TextSection::new(
