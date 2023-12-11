@@ -9,10 +9,10 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, goal::AntGoal, AntColorKind, LiveAntBundle},
+        ants::{debug_ants, goal::AntGoal, job::Job, AntColorKind, LiveAntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
         player::{update_player_sensor, Player},
-        zombants::spawn_zombant_queen,
+        zombants::{spawn_zombant_queen, ZombAntBundle},
     },
     helpers::{on_key_just_pressed, run_after, toggle_on_key, toggle_physics_debug},
     render::{
@@ -22,7 +22,7 @@ use last_of_ants::{
         MainCamera2d, MainCamera2dBundle,
     },
     ui::ui_clues::UiCluesPlugin,
-    GamePlugin, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION, PLAYER_SIZE, TILE_SIZE, AppState,
+    AppState, GamePlugin, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION, PLAYER_SIZE, TILE_SIZE,
 };
 use rand::{seq::IteratorRandom, Rng};
 
@@ -43,11 +43,14 @@ fn main() {
                 debug_ants.run_if(toggle_on_key(KeyCode::O)),
                 toggle_physics_debug.run_if(on_key_just_pressed(KeyCode::P)),
                 player_movement.after(update_player_sensor),
-                spawn_ants_on_navmesh.run_if(run_after(10)), // FIXME
+                //spawn_ants_on_navmesh.run_if(run_after(10)), // FIXME
                 spawn_explosions,
             ),
         )
-        .add_systems(OnEnter(AppState::ProcessingOthers), (spawn_ants_on_navmesh, attach_camera_to_player))
+        .add_systems(
+            OnEnter(AppState::ProcessingOthers),
+            (spawn_ants_on_navmesh, attach_camera_to_player),
+        )
         .insert_resource(LevelSelection::index(0))
         .run();
 }
@@ -114,12 +117,12 @@ fn player_movement(
         .unwrap_or(false);
 
     let space_pressed = inputs.pressed(KeyCode::Space);
-    let _left_pressed = inputs.pressed(KeyCode::A);
-    let _right_pressed = inputs.pressed(KeyCode::D);
+    let _left_pressed = inputs.pressed(KeyCode::A) || inputs.pressed(KeyCode::Left);
+    let _right_pressed = inputs.pressed(KeyCode::D) || inputs.pressed(KeyCode::Right);
     let left_pressed = _left_pressed && !_right_pressed;
     let right_pressed = _right_pressed && !_left_pressed;
-    let up_pressed = inputs.pressed(KeyCode::W);
-    let down_pressed = inputs.pressed(KeyCode::S);
+    let up_pressed = inputs.pressed(KeyCode::W) || inputs.pressed(KeyCode::Up);
+    let down_pressed = inputs.pressed(KeyCode::S) || inputs.pressed(KeyCode::Down);
     let shift_pressed = inputs.pressed(KeyCode::ShiftLeft);
 
     let v = &mut velocity.linvel;
@@ -293,7 +296,48 @@ fn spawn_ants_on_navmesh(
             entities_holder,
             entities_holder_pos,
             &mut rng,
-            AntGoal::default(),
+            AntGoal {
+                job: Job::Food,
+                holds: 0.,
+            },
+        );
+    }
+
+    for _ in 0..20 {
+        let Some((nav_node_entity, nav_node_pos, nav_node)) = nav_nodes.iter().choose(&mut rng)
+        else {
+            return;
+        };
+
+        let direction = Vec3::new(
+            rng.gen::<f32>() - 0.5,
+            rng.gen::<f32>() - 0.5,
+            rng.gen::<f32>() - 0.5,
+        )
+        .normalize();
+        let color_primary_kind = AntColorKind::new_random(&mut rng);
+        let color_secondary_kind =
+            AntColorKind::new_random_from_primary(&mut rng, &color_primary_kind);
+        let speed = 40.;
+        // let scale = rng.gen::<f32>() + 0.5;
+        let scale = 1.; // TODO
+        ZombAntBundle::spawn_on_nav_node(
+            &mut commands,
+            direction,
+            speed,
+            scale,
+            color_primary_kind,
+            color_secondary_kind,
+            nav_node_entity,
+            nav_node,
+            nav_node_pos,
+            entities_holder,
+            entities_holder_pos,
+            &mut rng,
+            AntGoal {
+                job: Job::Thief,
+                holds: 0.,
+            },
         );
     }
     // }
