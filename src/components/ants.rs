@@ -17,7 +17,7 @@ use crate::{
     WALL_Z_FACTOR,
 };
 
-use super::{nav_mesh::NavNode, dead_ants::DeadAntBundle};
+use super::{dead_ants::DeadAntBundle, nav_mesh::NavNode};
 
 pub mod goal;
 pub mod movement;

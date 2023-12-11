@@ -31,7 +31,7 @@ impl Default for PheromonsConfig {
             concentration_floor: [0.001; N_PHEROMONES],
             color: [(Color::BLACK, Color::WHITE); N_PHEROMONES],
             zombant_deposit: 1.0,
-            zombqueen_source: 20.0,
+            zombqueen_source: 40.0,
         };
 
         config.color[Default as usize] = (Color::PURPLE, Color::FUCHSIA);
@@ -40,11 +40,11 @@ impl Default for PheromonsConfig {
         config.color[Zombqueen as usize] = (Color::MAROON, Color::CRIMSON);
         config.color[Zombant as usize] = (Color::BEIGE, Color::DARK_GRAY);
 
-        config.evaporation_rate[Zombant as usize] = 0.8;
-        config.diffusion_rate[Zombant as usize] = 0.;
+        config.evaporation_rate[Zombant as usize] = 0.1;
+        config.diffusion_rate[Zombant as usize] = 0.01;
 
         config.evaporation_rate[Zombqueen as usize] = 0.01;
-        config.diffusion_rate[Zombqueen as usize] = 0.8;
+        config.diffusion_rate[Zombqueen as usize] = 0.9;
         config.diffusion_floor[Zombqueen as usize] = 0.0001;
         config.concentration_floor[Zombqueen as usize] = 0.0001;
 

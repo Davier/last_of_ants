@@ -9,7 +9,7 @@ use super::{
     dead_ants::DeadAnt,
     nav_mesh::NavNode,
     object::ObjectKind,
-    pheromones::{self, Pheromons, PheromonsConfig, PheromonsSource},
+    pheromones::{Pheromons, PheromonsConfig},
 };
 
 #[derive(Bundle)]
