@@ -9,6 +9,7 @@
 
 struct CocoonMaterial {
     is_clue: u32,
+    _padding: vec3<f32>,
 };
 const SHEDDING_MATERIAL_IS_CLUE_BIT: u32 = 1u;
 

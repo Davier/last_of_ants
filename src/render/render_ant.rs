@@ -24,7 +24,7 @@ use bevy::{
         },
         render_resource::{
             AsBindGroup, BufferUsages, BufferVec, ShaderRef, SpecializedMeshPipelineError,
-            VertexBufferLayout, VertexFormat, VertexStepMode,
+            VertexBufferLayout, VertexFormat, VertexStepMode, ShaderType,
         },
         renderer::{RenderDevice, RenderQueue},
         Extract, Render, RenderApp, RenderSet,
@@ -80,10 +80,23 @@ pub const ANT_MATERIAL_DEAD: Handle<AntMaterial> = Handle::weak_from_u128(177445
 pub const ANT_MESH2D: Mesh2dHandle = Mesh2dHandle(Handle::weak_from_u128(17147126180050932214));
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Copy, Clone)]
+#[uniform(0, AntMaterialUniform)]
 pub struct AntMaterial {
-    #[uniform(0)]
     pub flags: u32,
 }
+
+#[derive(ShaderType)]
+pub struct AntMaterialUniform {
+    pub flags: u32,
+    pub _padding: Vec3,
+}
+
+impl From<&AntMaterial> for AntMaterialUniform {
+    fn from(value: &AntMaterial) -> Self {
+        Self { flags: value.flags, _padding: Vec3::ZERO }
+    }
+} 
+
 const ANT_MATERIAL_FLAG_IS_SIDE: u32 = 0b0001;
 const ANT_MATERIAL_FLAG_IS_DEAD: u32 = 0b0010;
 const ANT_MATERIAL_FLAG_HAS_HALO: u32 = 0b0100;

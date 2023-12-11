@@ -1,6 +1,6 @@
 use bevy::{
     prelude::*,
-    render::render_resource::{AsBindGroup, ShaderRef},
+    render::render_resource::{AsBindGroup, ShaderRef, ShaderType},
     sprite::{Material2d, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle},
 };
 
@@ -26,9 +26,24 @@ impl Plugin for CocoonMaterialPlugin {
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Copy, Clone)]
+#[uniform(0, CocoonMaterialUniform)]
 pub struct CocoonMaterial {
-    #[uniform(0)]
     pub is_clue: u32,
+}
+
+#[derive(ShaderType)]
+pub struct CocoonMaterialUniform {
+    pub is_clue: u32,
+    pub _padding: Vec3,
+}
+
+impl From<&CocoonMaterial> for CocoonMaterialUniform {
+    fn from(value: &CocoonMaterial) -> Self {
+        Self {
+            is_clue: value.is_clue,
+            _padding: Vec3::ZERO,
+        }
+    }
 }
 
 impl Material2d for CocoonMaterial {

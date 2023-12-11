@@ -83,10 +83,10 @@ fn fragment(
     in: VertexOutput,
 ) -> @location(0) vec4<f32> {
 
-    if (material_flags & ANT_MATERIAL_FLAG_IS_DEAD) != 0u {
+    if (material.flags & ANT_MATERIAL_FLAG_IS_DEAD) != 0u {
         return fragment_dead(in);
     } else {
-        if (material_flags & ANT_MATERIAL_FLAG_IS_SIDE) != 0u {
+        if (material.flags & ANT_MATERIAL_FLAG_IS_SIDE) != 0u {
             return fragment_side(in);
         } else {
             return fragment_top(in);
@@ -95,7 +95,11 @@ fn fragment(
 }
 
 
-@group(1) @binding(0) var<uniform> material_flags: u32;
+struct AntMaterial {
+    flags: u32,
+    _padding: vec3<f32>,
+};
+@group(1) @binding(0) var<uniform> material: AntMaterial;
 const ANT_MATERIAL_FLAG_IS_SIDE: u32 = 1u;
 const ANT_MATERIAL_FLAG_IS_DEAD: u32 = 2u;
 const ANT_MATERIAL_FLAG_HAS_HALO: u32 = 4u;
