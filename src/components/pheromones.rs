@@ -3,7 +3,18 @@ use bevy_ecs_ldtk::LevelEvent;
 
 use crate::{components::object::ObjectCoords, resources::nav_mesh_lut::NavMeshLUT};
 
-use super::{nav_mesh::NavNode, object::Object, object::N_PHEROMONES};
+use super::{nav_mesh::NavNode, object::Object};
+
+#[derive(Default, Debug, Clone, Copy, Reflect, PartialEq, Eq)]
+pub enum PheromoneKind {
+    #[default]
+    Default = 0,
+    Storage = 1,
+    Food = 2,
+    Zombqueen = 3,
+    Zombant = 4,
+}
+pub const N_PHEROMONE_KINDS: usize = 5;
 
 pub const DEFAULT: usize = 0;
 pub const FOOD_STORE: usize = 1;
@@ -11,25 +22,25 @@ pub const FOOD_SOURCE: usize = 2;
 
 #[derive(Resource, Reflect)]
 pub struct PheromonsConfig {
-    evaporation_rate: [f32; N_PHEROMONES],
-    diffusion_rate: [f32; N_PHEROMONES],
-    diffusion_floor: [f32; N_PHEROMONES],
-    concentration_floor: [f32; N_PHEROMONES],
-    pub color: [(Color, Color); N_PHEROMONES],
+    evaporation_rate: [f32; N_PHEROMONE_KINDS],
+    diffusion_rate: [f32; N_PHEROMONE_KINDS],
+    diffusion_floor: [f32; N_PHEROMONE_KINDS],
+    concentration_floor: [f32; N_PHEROMONE_KINDS],
+    pub color: [(Color, Color); N_PHEROMONE_KINDS],
     pub zombant_deposit: f32,
     pub zombqueen_source: f32,
 }
 
 impl Default for PheromonsConfig {
     fn default() -> Self {
-        use super::object::ObjectKind::*;
+        use PheromoneKind::*;
 
         let mut config = Self {
-            evaporation_rate: [0.001; N_PHEROMONES],
+            evaporation_rate: [0.001; N_PHEROMONE_KINDS],
             diffusion_rate: [0.01, 0.6, 0.6, 0.6, 0.],
-            diffusion_floor: [0.001; N_PHEROMONES],
-            concentration_floor: [0.001; N_PHEROMONES],
-            color: [(Color::BLACK, Color::WHITE); N_PHEROMONES],
+            diffusion_floor: [0.001; N_PHEROMONE_KINDS],
+            concentration_floor: [0.001; N_PHEROMONE_KINDS],
+            color: [(Color::BLACK, Color::WHITE); N_PHEROMONE_KINDS],
             zombant_deposit: 1.0,
             zombqueen_source: 40.0,
         };
@@ -66,7 +77,7 @@ pub struct SourceCoord {
 
 #[derive(Component, Debug, Default)]
 pub struct PheromonsSource {
-    pub concentrations: Option<[f32; N_PHEROMONES]>,
+    pub concentrations: Option<[f32; N_PHEROMONE_KINDS]>,
 }
 
 impl PheromonsSource {
@@ -74,7 +85,7 @@ impl PheromonsSource {
         if let Some(mut concentrations) = self.concentrations {
             concentrations[kind] = concentration;
         } else {
-            let mut concentrations = [0.0_f32; N_PHEROMONES];
+            let mut concentrations = [0.0_f32; N_PHEROMONE_KINDS];
             concentrations[kind] = concentration;
             self.concentrations = Some(concentrations);
         }
@@ -93,7 +104,7 @@ impl PheromonsSource {
         if let Some(mut concentrations) = self.concentrations {
             concentrations[kind] += concentration;
         } else {
-            let mut concentrations = [0.0_f32; N_PHEROMONES];
+            let mut concentrations = [0.0_f32; N_PHEROMONE_KINDS];
             concentrations[kind] = concentration;
             self.concentrations = Some(concentrations);
         }
@@ -111,39 +122,39 @@ impl PheromonsSource {
 
 #[derive(Component)]
 pub struct PheromonsBuffers {
-    pub add_buffer: [f32; N_PHEROMONES],
+    pub add_buffer: [f32; N_PHEROMONE_KINDS],
 }
 
 impl Default for PheromonsBuffers {
     fn default() -> Self {
         Self {
-            add_buffer: [0.0; N_PHEROMONES],
+            add_buffer: [0.0; N_PHEROMONE_KINDS],
         }
     }
 }
 
 #[derive(Component)]
 pub struct Pheromons {
-    pub concentrations: [f32; N_PHEROMONES],
+    pub concentrations: [f32; N_PHEROMONE_KINDS],
 }
 
 impl Default for Pheromons {
     fn default() -> Self {
         Self {
-            concentrations: [0.0; N_PHEROMONES],
+            concentrations: [0.0; N_PHEROMONE_KINDS],
         }
     }
 }
 
 #[derive(Component)]
 pub struct PheromonsGradients {
-    pub gradients: [Vec3; N_PHEROMONES],
+    pub gradients: [Vec3; N_PHEROMONE_KINDS],
 }
 
 impl Default for PheromonsGradients {
     fn default() -> Self {
         Self {
-            gradients: [Vec3::ZERO; N_PHEROMONES],
+            gradients: [Vec3::ZERO; N_PHEROMONE_KINDS],
         }
     }
 }
@@ -175,7 +186,7 @@ pub fn diffuse_pheromons(
     mut pheromon_buffers: Query<&mut PheromonsBuffers, With<Pheromons>>,
     phcfg: Res<PheromonsConfig>,
 ) {
-    for i in 0..N_PHEROMONES {
+    for i in 0..N_PHEROMONE_KINDS {
         // Compute diffusion to neighbours
         for (_, node, node_pheromons) in nav_nodes.iter() {
             let diffused = node_pheromons.concentrations[i] * phcfg.diffusion_rate[i];
@@ -243,7 +254,7 @@ pub fn compute_gradients(
     mut gradients: Query<(Entity, &mut PheromonsGradients)>,
     nodes: Query<(&NavNode, &Pheromons)>,
 ) {
-    for i in 0..N_PHEROMONES {
+    for i in 0..N_PHEROMONE_KINDS {
         for (entity, mut gradient) in gradients.iter_mut() {
             let (node, pheromons) = nodes.get(entity).unwrap();
             let mut components = GradientComponents::default();

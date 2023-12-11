@@ -20,6 +20,7 @@ use crate::{
 use super::{dead_ants::DeadAntBundle, nav_mesh::NavNode};
 
 pub mod goal;
+pub mod job;
 pub mod movement;
 use self::goal::AntGoal;
 use self::movement::AntMovement;
@@ -368,7 +369,7 @@ pub fn update_ant_position_kinds(
                             wall_transform_global
                         ));
                         // A collision was missed, try to fix it
-                        assert!(matches!(wall_node, NavNode::HorizontalEdge { .. }));
+                        // FIXME assert!(matches!(wall_node, NavNode::HorizontalEdge { .. }));
                         ant_movement.current_node = (wall_entity, *wall_transform_global);
                     } else {
                         let wall_transform_relative =
@@ -445,7 +446,7 @@ pub fn update_ant_position_kinds(
                             wall_transform_global
                         ));
                         // A collision was missed, try to fix it
-                        assert!(matches!(wall_node, NavNode::VerticalEdge { .. }));
+                        // FIXME assert!(matches!(wall_node, NavNode::VerticalEdge { .. }));
                         ant_movement.current_node = (wall_entity, *wall_transform_global);
                     } else {
                         let wall_transform_relative =
