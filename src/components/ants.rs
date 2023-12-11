@@ -5,15 +5,20 @@ use bevy_rapier2d::prelude::*;
 use rand::{rngs::ThreadRng, seq::SliceRandom, Rng};
 
 use crate::{
-    render::render_ant::{
-        AntMaterial, AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D,
+    render::{
+        player_animation::Explosion,
+        render_ant::{
+            AntMaterial, AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D,
+        },
     },
     resources::nav_mesh_lut::NavMeshLUT,
-    ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_PLAYER_SENSOR,
-    COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE, WALL_Z_FACTOR,
+    ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION,
+    COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE,
+    WALL_Z_FACTOR,
 };
 
 use super::{
+    dead_ants::DeadAntBundle,
     nav_mesh::NavNode,
     object::{Object, ObjectKind},
     pheromons::PheromonsGradients,
@@ -190,7 +195,7 @@ impl LiveAntBundle {
             colliding_entities: Default::default(),
             collision_groups: CollisionGroups::new(
                 COLLISION_GROUP_ANTS,
-                COLLISION_GROUP_PLAYER_SENSOR | COLLISION_GROUP_WALLS,
+                COLLISION_GROUP_PLAYER_SENSOR | COLLISION_GROUP_WALLS | COLLISION_GROUP_EXPLOSION,
             ),
             render_layers: RENDERLAYER_ANTS,
         }
@@ -670,5 +675,25 @@ pub fn debug_ants(ants: Query<(&AntMovement, &GlobalTransform)>, mut gizmos: Giz
             ant_movement.current_node.1.translation().xy(),
             Color::WHITE,
         );
+    }
+}
+
+pub fn ant_explosion_collision(
+    mut commands: Commands,
+    ants: Query<(Entity, &CollidingEntities, &Parent, &Transform, &AntStyle), With<LiveAnt>>,
+    explosions: Query<(), With<Explosion>>,
+) {
+    for (ant, colliding_entities, parent, ant_transform, ant_style) in ants.iter() {
+        for colliding_entity in colliding_entities.iter() {
+            if explosions.contains(colliding_entity) {
+                // Despawn ant
+                commands.entity(parent.get()).remove_children(&[ant]);
+                commands.entity(ant).despawn();
+                // Spawn dead ant
+                commands
+                    .spawn(DeadAntBundle::new(*ant_transform, *ant_style))
+                    .set_parent(parent.get());
+            }
+        }
     }
 }

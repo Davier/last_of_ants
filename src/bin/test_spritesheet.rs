@@ -25,21 +25,24 @@ fn setup(
     ));
 }
 
-fn update(inputs: Res<Input<KeyCode>>, mut animations: Query<&mut PlayerAnimation>) {
-    let mut animation = animations.single_mut();
+fn update(
+    inputs: Res<Input<KeyCode>>,
+    mut animations: Query<(&mut PlayerAnimation, &mut AnimationTimer)>,
+) {
+    let (mut animation, mut animation_timer) = animations.single_mut();
     if inputs.just_pressed(KeyCode::Space) {
-        animation.set_state(PlayerAnimationState::Jumping);
+        animation.set_state(PlayerAnimationState::Jumping, &mut animation_timer);
     } else if inputs.pressed(KeyCode::D) {
         if matches!(animation.state, PlayerAnimationState::Standing) {
-            animation.set_state(PlayerAnimationState::Running);
+            animation.set_state(PlayerAnimationState::Running, &mut animation_timer);
             animation.is_facing_right = true;
         }
     } else if inputs.pressed(KeyCode::A) {
         if matches!(animation.state, PlayerAnimationState::Standing) {
-            animation.set_state(PlayerAnimationState::Running);
+            animation.set_state(PlayerAnimationState::Running, &mut animation_timer);
             animation.is_facing_right = false;
         }
     } else if !matches!(animation.state, PlayerAnimationState::Jumping) {
-        animation.set_state(PlayerAnimationState::Standing);
+        animation.set_state(PlayerAnimationState::Standing, &mut animation_timer);
     }
 }

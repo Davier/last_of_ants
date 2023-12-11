@@ -100,7 +100,6 @@ impl AntMaterial {
         if has_halo {
             flags |= ANT_MATERIAL_FLAG_HAS_HALO;
         }
-        dbg!(flags);
         Self { flags }
     }
 }

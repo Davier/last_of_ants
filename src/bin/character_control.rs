@@ -1,4 +1,8 @@
-use bevy::prelude::*;
+use bevy::{
+    input::{mouse::MouseButtonInput, ButtonState},
+    prelude::*,
+    window::PrimaryWindow,
+};
 use bevy_ecs_ldtk::prelude::*;
 // use bevy_framepace::FramepacePlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -12,11 +16,13 @@ use last_of_ants::{
     },
     helpers::{on_key_just_pressed, run_after, toggle_on_key, toggle_physics_debug},
     render::{
-        player_animation::{PlayerAnimation, PlayerAnimationState},
+        player_animation::{
+            AnimationTimer, EffectAnimationBundle, Explosion, PlayerAnimation, PlayerAnimationState,
+        },
         MainCamera2d, MainCamera2dBundle,
     },
     ui::ui_clues::UiCluesPlugin,
-    GamePlugin, TILE_SIZE,
+    GamePlugin, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION, PLAYER_SIZE, TILE_SIZE,
 };
 use rand::{seq::IteratorRandom, Rng};
 
@@ -40,6 +46,7 @@ fn main() {
                 player_movement.after(update_player_sensor),
                 spawn_ants_on_navmesh.run_if(run_after(10)), // FIXME
                 spawn_zombant_queen.run_if(run_after(11)),   // FIXME
+                spawn_explosions,
             ),
         )
         .insert_resource(LevelSelection::index(0))
@@ -62,7 +69,7 @@ fn player_movement(
         (
             &mut KinematicCharacterController,
             &mut Velocity,
-            &Player,
+            &mut Player,
             Option<&KinematicCharacterControllerOutput>,
         ),
         With<Player>,
@@ -73,9 +80,10 @@ fn player_movement(
     mut last_time_on_right_wall: Local<f32>,
     mut last_time_on_ground: Local<f32>,
     mut jump_available: Local<bool>,
-    mut animations: Query<&mut PlayerAnimation>,
+    mut animations: Query<(&mut PlayerAnimation, &mut AnimationTimer)>,
 ) {
-    let Ok((mut controller, mut velocity, player, controller_output)) = players.get_single_mut()
+    let Ok((mut controller, mut velocity, mut player, controller_output)) =
+        players.get_single_mut()
     else {
         return;
     };
@@ -83,7 +91,7 @@ fn player_movement(
     let mut walk_speed = 10.0 * TILE_SIZE;
     let gravity = -9.81 * 10.0 * TILE_SIZE;
     let dt = time.delta_seconds();
-    let jump_impulse = 0.5 * TILE_SIZE / dt;
+    let mut jump_impulse = 0.5 * TILE_SIZE / dt;
     let max_sliding_velocity = 4. * TILE_SIZE;
     let jump_tolerance = 0.1; // [s]
 
@@ -91,6 +99,7 @@ fn player_movement(
     let is_on_ground = controller_output
         .map(|output| output.grounded)
         .unwrap_or(true);
+    player.is_grounded = is_on_ground; // FIXME: renames
     let is_on_wall = !player.on_wall.is_empty();
     if player.is_on_left_wall {
         *last_time_on_left_wall = time.elapsed_seconds();
@@ -122,11 +131,17 @@ fn player_movement(
     let v = &mut velocity.linvel;
     // info!("{:5?} | {:?}", is_on_ground, is_on_wall);
 
-    let mut animation = animations.single_mut();
+    let (mut animation, mut animation_timer) = animations.single_mut();
+    // let mut animation_moving_state = PlayerAnimationState::Running;
 
     // Slow down if shift is pressed
     if shift_pressed {
-        walk_speed *= 0.5;
+        walk_speed *= 0.4;
+        jump_impulse *= 0.8;
+        // animation_moving_state = PlayerAnimationState::Walking; // FIXME: animation speed not working
+        player.is_crouching = true;
+    } else {
+        player.is_crouching = false;
     }
 
     // Only allow one jump per pressed key
@@ -156,6 +171,26 @@ fn player_movement(
         v.y = -max_sliding_velocity;
     }
 
+    // Climbing animation
+    if is_on_left_wall_recently
+        && !is_on_ground_recently
+        && !matches!(animation.state, PlayerAnimationState::Climbing)
+    {
+        animation.set_state(PlayerAnimationState::Climbing, &mut animation_timer);
+        animation.is_facing_right = false;
+    }
+    if is_on_right_wall_recently
+        && !is_on_ground_recently
+        && !matches!(animation.state, PlayerAnimationState::Climbing)
+    {
+        animation.set_state(PlayerAnimationState::Climbing, &mut animation_timer);
+        animation.is_facing_right = true;
+    }
+    if (!is_on_wall || is_on_ground_recently)
+        && matches!(animation.state, PlayerAnimationState::Climbing)
+    {
+        animation.set_state(PlayerAnimationState::Standing, &mut animation_timer);
+    }
     // Move from inputs
     if right_pressed
         && (is_on_ground_recently || is_on_left_wall_recently || is_on_right_wall_recently)
@@ -163,7 +198,7 @@ fn player_movement(
         v.x = walk_speed;
         animation.is_facing_right = true;
         if matches!(animation.state, PlayerAnimationState::Standing) {
-            animation.set_state(PlayerAnimationState::Running);
+            animation.set_state(PlayerAnimationState::Running, &mut animation_timer);
         }
     };
     if left_pressed
@@ -172,32 +207,31 @@ fn player_movement(
         v.x = -walk_speed;
         animation.is_facing_right = false;
         if matches!(animation.state, PlayerAnimationState::Standing) {
-            animation.set_state(PlayerAnimationState::Running);
+            animation.set_state(PlayerAnimationState::Running, &mut animation_timer);
         }
     };
     if !left_pressed && !right_pressed && matches!(animation.state, PlayerAnimationState::Running) {
-        animation.set_state(PlayerAnimationState::Standing);
+        animation.set_state(PlayerAnimationState::Standing, &mut animation_timer);
     }
     if space_pressed && *jump_available {
         if is_on_ground {
             v.y = jump_impulse;
             *jump_available = false;
-            animation.set_state(PlayerAnimationState::Jumping);
+            animation.set_state(PlayerAnimationState::Jumping, &mut animation_timer);
         } else if is_on_left_wall_recently && right_pressed {
             v.y = jump_impulse;
             v.x = jump_impulse / 3.;
             *jump_available = false;
-            animation.set_state(PlayerAnimationState::Jumping);
+            animation.set_state(PlayerAnimationState::Jumping, &mut animation_timer);
             // info!("Wall jump left");
         } else if is_on_right_wall_recently && left_pressed {
             v.y = jump_impulse;
             v.x = -jump_impulse / 3.;
             *jump_available = false;
-            animation.set_state(PlayerAnimationState::Jumping);
+            animation.set_state(PlayerAnimationState::Jumping, &mut animation_timer);
             // info!("Wall jump right");
         }
     }
-
     let delta_position = *v * dt;
     // dbg!(&delta_position);
     controller.translation = Some(delta_position);
@@ -269,4 +303,69 @@ fn spawn_ants_on_navmesh(
         );
     }
     // }
+}
+
+pub fn spawn_explosions(
+    mut commands: Commands,
+    mut mouse_events: EventReader<MouseButtonInput>,
+    mut player: Query<(
+        &Player,
+        &GlobalTransform,
+        &mut PlayerAnimation,
+        &mut AnimationTimer,
+    )>,
+    windows: Query<&Window, With<PrimaryWindow>>,
+    cameras: Query<(&Camera, &GlobalTransform), With<MainCamera2d>>,
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+) {
+    for mouse_event in mouse_events.read() {
+        let MouseButtonInput {
+            state: ButtonState::Pressed,
+            button: MouseButton::Left,
+            window: _,
+        } = mouse_event
+        else {
+            return;
+        };
+        let Some(cursor_position) = windows.single().cursor_position() else {
+            return;
+        };
+        let Ok((camera, camera_transform)) = cameras.get_single() else {
+            return;
+        };
+        let Some(cursor_position) = camera.viewport_to_world_2d(camera_transform, cursor_position)
+        else {
+            return;
+        };
+
+        let Ok((player, player_transform, mut player_animation, mut animation_timer)) =
+            player.get_single_mut()
+        else {
+            return;
+        };
+        if !player.is_grounded {
+            return;
+        }
+
+        let player_position = player_transform.translation().xy();
+
+        let direction = (cursor_position - player_position).normalize_or_zero();
+        let reach = 30.;
+        let effect_position = player_position + direction * reach;
+        let effect_transform = GlobalTransform::from_xyz(effect_position.x, effect_position.y, 10.);
+        commands.spawn((
+            EffectAnimationBundle::new_explosion(
+                effect_transform,
+                &asset_server,
+                &mut texture_atlases,
+            ),
+            Collider::ball(PLAYER_SIZE.y),
+            CollisionGroups::new(COLLISION_GROUP_EXPLOSION, COLLISION_GROUP_ANTS),
+            ActiveEvents::COLLISION_EVENTS,
+            ActiveCollisionTypes::STATIC_STATIC,
+            Explosion,
+        ));
+        player_animation.set_state(PlayerAnimationState::Attacking, &mut animation_timer);
+    }
 }

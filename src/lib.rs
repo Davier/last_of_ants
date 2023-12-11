@@ -80,6 +80,7 @@ impl Plugin for GamePlugin {
                     update_player_sensor,
                     spawn_player_sensor,
                     clues_receive_events,
+                    ant_explosion_collision,
                     (
                         update_ant_position_kinds,
                         assert_ants, // TODO: disable in release?
@@ -100,7 +101,7 @@ impl Plugin for GamePlugin {
 }
 
 pub const PIXELS_PER_METER: f32 = 16.;
-pub const PLAYER_SIZE: Vec2 = Vec2::new(16., 20.);
+pub const PLAYER_SIZE: Vec2 = Vec2::new(32., 32.);
 pub const ANT_SIZE: Vec2 = Vec2::new(16., 16.);
 /// Vertical and horizontal edges will have their [NavNode] placed at `tile_size * WALL_Z_FACTOR / 2.` in Z
 pub const WALL_Z_FACTOR: f32 = 1.;
@@ -120,8 +121,9 @@ pub const COLLISION_GROUP_WALLS: Group = Group::GROUP_1;
 pub const COLLISION_GROUP_PLAYER: Group = Group::GROUP_2;
 pub const COLLISION_GROUP_PLAYER_SENSOR: Group = Group::GROUP_3;
 pub const COLLISION_GROUP_ANTS: Group = Group::GROUP_4;
-pub const COLLISION_GROUP_DEAD_ANTS: Group = Group::GROUP_4;
-pub const COLLISION_GROUP_CLUE: Group = Group::GROUP_5;
+pub const COLLISION_GROUP_DEAD_ANTS: Group = Group::GROUP_5;
+pub const COLLISION_GROUP_CLUE: Group = Group::GROUP_6;
+pub const COLLISION_GROUP_EXPLOSION: Group = Group::GROUP_7;
 
 pub const RENDERLAYER_ANTS: RenderLayers = RenderLayers::layer(1);
 pub const RENDERLAYER_PLAYER: RenderLayers = RenderLayers::layer(2);

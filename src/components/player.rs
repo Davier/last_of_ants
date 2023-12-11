@@ -40,7 +40,7 @@ impl LdtkEntity for PlayerBundle {
     ) -> Self {
         Self {
             animation: PlayerAnimationBundle::new(asset_server, texture_atlases),
-            collider: Collider::cuboid(PLAYER_SIZE.x / 2. - 2., PLAYER_SIZE.y / 2.),
+            collider: Collider::cuboid(PLAYER_SIZE.x / 2. / 2., PLAYER_SIZE.y / 2. - 2.),
             collider_mass: ColliderMassProperties::Density(1.),
             player: Default::default(),
             controller: KinematicCharacterController {
@@ -87,7 +87,9 @@ pub fn update_player_sensor(
             if let Ok((ant_movement, ant_transform, ant_parent, ant_style)) =
                 ants.get(colliding_entity)
             {
-                if !matches!(ant_movement.position_kind, AntPositionKind::Background) {
+                if !matches!(ant_movement.position_kind, AntPositionKind::Background)
+                    && !player.is_crouching
+                {
                     // Spawn a dead ant
                     commands
                         .spawn(DeadAntBundle::new(*ant_transform, *ant_style))
@@ -138,10 +140,12 @@ pub fn update_player_sensor(
 pub struct Player {
     pub on_wall: HashSet<Entity>,
     pub on_ground: HashSet<Entity>,
-    // pub is_grounded: bool,
+    /// Set by the CharacterController
+    pub is_grounded: bool,
     pub is_on_left_wall: bool,
     pub is_on_right_wall: bool,
     // pub is_on_ceiling: bool,
+    pub is_crouching: bool,
 }
 
 #[derive(Debug, Copy, Clone, Reflect, Component)]
