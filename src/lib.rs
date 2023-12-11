@@ -4,7 +4,7 @@ pub mod render;
 pub mod resources;
 pub mod ui;
 
-use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers};
+use bevy::{asset::AssetMetaCheck, prelude::*, render::view::RenderLayers, window::PrimaryWindow};
 use bevy_asset_loader::{
     asset_collection::AssetCollection,
     loading_state::{LoadingState, LoadingStateAppExt},
@@ -23,7 +23,10 @@ use components::{
     cocoons::CocoonBundle,
     nav_mesh::*,
     object::ObjectBundle,
-    pheromones::{init_pheromons, init_sources, PheromonsConfig},
+    pheromones::{
+        apply_sources, compute_gradients, diffuse_pheromons, init_pheromons, init_sources,
+        PheromoneKind, Pheromons, PheromonsConfig, PheromonsGradients, N_PHEROMONE_KINDS,
+    },
     player::*,
     tiles::*,
     zombants::{
@@ -31,15 +34,17 @@ use components::{
         ZombAntQueenSpawnPoint,
     },
 };
-use helpers::pause_if_not_focused;
+use helpers::{pause_if_not_focused, toggle_on_key};
+use itertools::Itertools;
 use render::{
     player_animation::PlayerAnimationPlugin, render_ant::AntMaterialPlugin,
-    render_cocoon::CocoonMaterialPlugin,
+    render_cocoon::CocoonMaterialPlugin, MainCamera2d,
 };
 use resources::{
     clues::{clues_receive_events, ClueEvent, Clues},
     nav_mesh_lut::NavMeshLUT,
 };
+use ui::win::display_win;
 
 pub struct GamePlugin;
 
@@ -68,10 +73,10 @@ impl Plugin for GamePlugin {
                 CocoonMaterialPlugin,
                 PlayerAnimationPlugin,
             ))
-            .add_plugins((
-                ResourceInspectorPlugin::<PheromonsConfig>::default(),
-                ResourceInspectorPlugin::<Metrics>::default(),
-            ))
+            //.add_plugins((
+            //    ResourceInspectorPlugin::<PheromonsConfig>::default(),
+            //    ResourceInspectorPlugin::<Metrics>::default(),
+            //))
             .add_state::<AppState>()
             .add_loading_state(
                 LoadingState::new(AppState::Loading)
@@ -101,6 +106,7 @@ impl Plugin for GamePlugin {
             .add_systems(
                 Update,
                 (
+                    debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
                     pause_if_not_focused,
                     update_player_sensor,
                     clues_receive_events,
@@ -115,11 +121,15 @@ impl Plugin for GamePlugin {
                         update_zombqueen_source,
                         update_ant_goal,
                         update_metrics,
+                        diffuse_pheromons,
+                        apply_sources,
+                        compute_gradients,
                     )
                         .chain(),
                 )
                     .run_if(in_state(AppState::Playing)),
-            );
+            )
+            .add_systems(Update, (display_win).run_if(in_state(AppState::Win)));
     }
 }
 
@@ -130,6 +140,7 @@ pub enum AppState {
     ProcessingNavNodes,
     ProcessingOthers,
     Playing,
+    Win,
 }
 
 #[derive(AssetCollection, Resource)]
@@ -185,3 +196,70 @@ pub const RENDERLAYER_PLAYER: RenderLayers = RenderLayers::layer(2);
 pub const RENDERLAYER_CLUE_ANT: RenderLayers = RenderLayers::layer(3);
 
 pub const CLUE_COLOR: Color = Color::rgb_linear(1., 0.6, 0.);
+
+fn debug_pheromons(
+    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonsGradients)>,
+    query_transform: Query<&GlobalTransform, With<NavNode>>,
+    phcfg: Res<PheromonsConfig>,
+    mut gizmos: Gizmos,
+
+    buttons: Res<Input<MouseButton>>,
+    q_window: Query<&Window, With<PrimaryWindow>>,
+    q_camera: Query<(&Camera, &GlobalTransform), With<MainCamera2d>>,
+) {
+    let (camera, camera_transform) = q_camera.single();
+    let window = q_window.single();
+    if let Some(cursor_world_position) = window
+        .cursor_position()
+        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+        .map(|ray| ray.origin.truncate())
+    {
+        // debug!("Cursor at: {:?}", cursor_world_position);
+        let mut distances = query_nodes
+            .iter_mut()
+            .map(|(id, _, ph, gd)| {
+                let pos = query_transform.get(id).unwrap().translation().xy();
+                (id, pos, pos.distance(cursor_world_position), ph, gd)
+            })
+            .collect_vec();
+
+        distances.sort_by(|a, b| a.2.partial_cmp(&b.2).unwrap());
+
+        gizmos.circle_2d(distances[1].1, 0.5, Color::RED);
+        gizmos.circle_2d(distances[2].1, 0.5, Color::RED);
+        gizmos.circle_2d(distances[3].1, 0.5, Color::RED);
+        let closest = &mut distances[0];
+
+        gizmos.circle_2d(closest.1, 0.5, Color::RED);
+        gizmos.ray_2d(
+            cursor_world_position,
+            closest.4.gradients[PheromoneKind::Default as usize].xy(),
+            Color::ALICE_BLUE,
+        );
+
+        if buttons.pressed(MouseButton::Left) {
+            closest.3.concentrations[PheromoneKind::Default as usize] += 1.;
+        } else if buttons.pressed(MouseButton::Right) {
+            closest.3.concentrations[PheromoneKind::Storage as usize] += 1.;
+        }
+    }
+
+    for (e, n, ph, g) in query_nodes.iter() {
+        let t = query_transform.get(e).unwrap();
+
+        for i in 0..N_PHEROMONE_KINDS {
+            if ph.concentrations[i] > 0. {
+                gizmos.circle_2d(
+                    t.translation().xy(),
+                    ph.concentrations[i].max(0.5),
+                    phcfg.color[i].0,
+                );
+            }
+            gizmos.ray_2d(
+                t.translation().xy(),
+                g.gradients[i].xy() * 2.0,
+                phcfg.color[i].1,
+            );
+        }
+    }
+}

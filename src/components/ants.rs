@@ -301,7 +301,8 @@ pub fn update_ant_position_kinds(
                     let NavNode::HorizontalEdge { back, .. } =
                         nav_nodes.get(ant_movement.current_node.0).unwrap().1
                     else {
-                        panic!()
+                        // FIXME panic!()
+                        continue;
                     };
                     if back.is_some() {
                         // Offset from the wall
@@ -352,7 +353,8 @@ pub fn update_ant_position_kinds(
                     let (wall_entity, wall_node, wall_transform_global) = {
                         let NavNode::HorizontalEdge { left, right, .. } = current_wall.1 else {
                             dbg!(current_wall);
-                            panic!(); // FIXME
+                            continue;
+                            // FIXME panic!();
                         };
                         let neighbor = if new_wall_is_left_side { right } else { left };
                         let neighbor = neighbor.get().unwrap(); // If there is no neighbor, there should be a collider to block the ant

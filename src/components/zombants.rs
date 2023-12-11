@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use crate::{
     render::render_ant::{AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D},
     resources::nav_mesh_lut::NavMeshLUT,
-    ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION,
+    AppState, ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION,
     COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE,
     WALL_Z_FACTOR,
 };
@@ -253,11 +253,13 @@ pub fn update_zombants_deposit(
 pub fn update_zombqueen_source(
     queen: Query<&AntMovement, With<ZombAntQueen>>,
     mut nodes: Query<&mut Pheromons>,
-    //mut nodes: Query<&mut PheromonsSource>,
     phcfg: Res<PheromonsConfig>,
+    mut next_state: ResMut<NextState<AppState>>,
 ) {
     if let Ok(queen_movement) = queen.get_single() {
         let mut pheromones = nodes.get_mut(queen_movement.current_node.0).unwrap();
         pheromones.concentrations[PheromoneKind::Zombqueen as usize] += phcfg.zombqueen_source;
+    } else {
+        next_state.set(AppState::Win);
     }
 }
