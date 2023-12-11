@@ -678,7 +678,7 @@ pub fn debug_ants(ants: Query<(&AntMovement, &GlobalTransform)>, mut gizmos: Giz
 
 pub fn ant_explosion_collision(
     mut commands: Commands,
-    ants: Query<(Entity, &CollidingEntities, &Parent, &Transform, &AntStyle), With<LiveAnt>>,
+    ants: Query<(Entity, &CollidingEntities, &Parent, &Transform, &AntStyle)>,
     explosions: Query<(), With<Explosion>>,
 ) {
     for (ant, colliding_entities, parent, ant_transform, ant_style) in ants.iter() {
