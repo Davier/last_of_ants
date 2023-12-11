@@ -17,12 +17,7 @@ use crate::{
     WALL_Z_FACTOR,
 };
 
-use super::{
-    dead_ants::DeadAntBundle,
-    nav_mesh::NavNode,
-    object::{Object, ObjectKind},
-    pheromons::PheromonsGradients,
-};
+use super::{nav_mesh::NavNode, dead_ants::DeadAntBundle};
 
 pub mod goal;
 pub mod movement;

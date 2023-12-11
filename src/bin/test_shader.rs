@@ -9,7 +9,7 @@ use bevy::{
 };
 use last_of_ants::{
     components::ants::{
-        goal::AntGoal, AntColorKind, AntPositionKind, AntStyle, LiveAnt, movement::AntMovement,
+        goal::AntGoal, movement::AntMovement, AntColorKind, AntPositionKind, AntStyle, LiveAnt,
     },
     render::render_ant::{AntMaterial, AntMaterialPlugin},
     ANT_SIZE,

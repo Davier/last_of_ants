@@ -3,34 +3,57 @@ use bevy_ecs_ldtk::LevelEvent;
 
 use crate::{components::object::ObjectCoords, resources::nav_mesh_lut::NavMeshLUT};
 
-use super::{nav_mesh::NavNode, object::Object};
+use super::{nav_mesh::NavNode, object::Object, object::N_PHEROMONES};
 
 pub const DEFAULT: usize = 0;
 pub const FOOD_STORE: usize = 1;
 pub const FOOD_SOURCE: usize = 2;
-pub const N: usize = 3;
 
 #[derive(Resource, Reflect)]
 pub struct PheromonsConfig {
-    evaporation_rate: [f32; N],
-    diffusion_rate: [f32; N],
-    diffusion_floor: [f32; N],
-    concentration_floor: [f32; N],
+    evaporation_rate: [f32; N_PHEROMONES],
+    diffusion_rate: [f32; N_PHEROMONES],
+    diffusion_floor: [f32; N_PHEROMONES],
+    concentration_floor: [f32; N_PHEROMONES],
+    pub color: [(Color, Color); N_PHEROMONES],
+    pub zombant_deposit: f32,
+    pub zombqueen_source: f32,
 }
 
 impl Default for PheromonsConfig {
     fn default() -> Self {
-        Self {
-            evaporation_rate: [0.001; N],
-            diffusion_rate: [0.01, 0.6, 0.6],
-            diffusion_floor: [0.001; N],
-            concentration_floor: [0.001; N],
-        }
+        use super::object::ObjectKind::*;
+
+        let mut config = Self {
+            evaporation_rate: [0.001; N_PHEROMONES],
+            diffusion_rate: [0.01, 0.6, 0.6, 0.6, 0.],
+            diffusion_floor: [0.001; N_PHEROMONES],
+            concentration_floor: [0.001; N_PHEROMONES],
+            color: [(Color::BLACK, Color::WHITE); N_PHEROMONES],
+            zombant_deposit: 1.0,
+            zombqueen_source: 20.0,
+        };
+
+        config.color[Default as usize] = (Color::PURPLE, Color::FUCHSIA);
+        config.color[Food as usize] = (Color::DARK_GREEN, Color::LIME_GREEN);
+        config.color[Storage as usize] = (Color::BLUE, Color::AZURE);
+        config.color[Zombqueen as usize] = (Color::MAROON, Color::CRIMSON);
+        config.color[Zombant as usize] = (Color::BEIGE, Color::DARK_GRAY);
+
+        config.evaporation_rate[Zombant as usize] = 0.8;
+        config.diffusion_rate[Zombant as usize] = 0.;
+
+        config.evaporation_rate[Zombqueen as usize] = 0.01;
+        config.diffusion_rate[Zombqueen as usize] = 0.8;
+        config.diffusion_floor[Zombqueen as usize] = 0.0001;
+        config.concentration_floor[Zombqueen as usize] = 0.0001;
+
+        config
     }
 }
 
 #[derive(Bundle)]
-pub struct PheromonSourceBundle {
+pub struct PheromoneSourceBundle {
     value: PheromonsSource,
     coord: SourceCoord,
 }
@@ -43,15 +66,34 @@ pub struct SourceCoord {
 
 #[derive(Component, Debug, Default)]
 pub struct PheromonsSource {
-    pub concentrations: Option<[f32; N]>,
+    pub concentrations: Option<[f32; N_PHEROMONES]>,
 }
 
 impl PheromonsSource {
+    pub fn set(&mut self, kind: usize, concentration: f32) {
+        if let Some(mut concentrations) = self.concentrations {
+            concentrations[kind] = concentration;
+        } else {
+            let mut concentrations = [0.0_f32; N_PHEROMONES];
+            concentrations[kind] = concentration;
+            self.concentrations = Some(concentrations);
+        }
+    }
+
+    pub fn clear(&mut self, kind: usize) {
+        if let Some(mut concentrations) = self.concentrations {
+            concentrations[kind] = 0.;
+            if concentrations.iter().all(|c| *c == 0.) {
+                self.concentrations = None;
+            }
+        }
+    }
+
     pub fn add(&mut self, kind: usize, concentration: f32) {
         if let Some(mut concentrations) = self.concentrations {
             concentrations[kind] += concentration;
         } else {
-            let mut concentrations = [0.0_f32; N];
+            let mut concentrations = [0.0_f32; N_PHEROMONES];
             concentrations[kind] = concentration;
             self.concentrations = Some(concentrations);
         }
@@ -69,39 +111,39 @@ impl PheromonsSource {
 
 #[derive(Component)]
 pub struct PheromonsBuffers {
-    pub add_buffer: [f32; N],
+    pub add_buffer: [f32; N_PHEROMONES],
 }
 
 impl Default for PheromonsBuffers {
     fn default() -> Self {
         Self {
-            add_buffer: [0.0; N],
+            add_buffer: [0.0; N_PHEROMONES],
         }
     }
 }
 
 #[derive(Component)]
 pub struct Pheromons {
-    pub concentrations: [f32; N],
+    pub concentrations: [f32; N_PHEROMONES],
 }
 
 impl Default for Pheromons {
     fn default() -> Self {
         Self {
-            concentrations: [0.0; N],
+            concentrations: [0.0; N_PHEROMONES],
         }
     }
 }
 
 #[derive(Component)]
 pub struct PheromonsGradients {
-    pub gradients: [Vec3; N],
+    pub gradients: [Vec3; N_PHEROMONES],
 }
 
 impl Default for PheromonsGradients {
     fn default() -> Self {
         Self {
-            gradients: [Vec3::ZERO; N],
+            gradients: [Vec3::ZERO; N_PHEROMONES],
         }
     }
 }
@@ -133,7 +175,7 @@ pub fn diffuse_pheromons(
     mut pheromon_buffers: Query<&mut PheromonsBuffers, With<Pheromons>>,
     phcfg: Res<PheromonsConfig>,
 ) {
-    for i in 0..N {
+    for i in 0..N_PHEROMONES {
         // Compute diffusion to neighbours
         for (_, node, node_pheromons) in nav_nodes.iter() {
             let diffused = node_pheromons.concentrations[i] * phcfg.diffusion_rate[i];
@@ -201,7 +243,7 @@ pub fn compute_gradients(
     mut gradients: Query<(Entity, &mut PheromonsGradients)>,
     nodes: Query<(&NavNode, &Pheromons)>,
 ) {
-    for i in 0..N {
+    for i in 0..N_PHEROMONES {
         for (entity, mut gradient) in gradients.iter_mut() {
             let (node, pheromons) = nodes.get(entity).unwrap();
             let mut components = GradientComponents::default();

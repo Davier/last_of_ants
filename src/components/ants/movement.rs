@@ -6,7 +6,7 @@ use rand::Rng;
 
 use crate::components::{
     object::{Object, ObjectKind},
-    pheromons::PheromonsGradients,
+    pheromones::PheromonsGradients,
 };
 
 use super::{goal::AntGoal, AntPositionKind};
@@ -29,11 +29,11 @@ impl AntMovement {
         mut object: &mut Object,
     ) {
         match object.kind {
-            ObjectKind::Default => (),
             ObjectKind::Storage => self.goal.step_storage(object, &mut self.direction),
             ObjectKind::Food => self
                 .goal
                 .step_food(object_id, &mut object, &mut self.direction), /*commands,*/
+            _ => (),
         }
     }
 }

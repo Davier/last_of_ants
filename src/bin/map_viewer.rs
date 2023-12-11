@@ -11,10 +11,10 @@ use last_of_ants::{
     components::{
         ants::{debug_ants, goal::AntGoal, AntColorKind, LiveAnt, LiveAntBundle},
         nav_mesh::{debug_nav_mesh, NavNode},
-        object::ObjectKind,
-        pheromons::{
-            apply_sources, compute_gradients, diffuse_pheromons, Pheromons, PheromonsGradients,
-            DEFAULT, FOOD_SOURCE, FOOD_STORE,
+        object::{ObjectKind, N_PHEROMONES},
+        pheromones::{
+            apply_sources, compute_gradients, diffuse_pheromons, Pheromons, PheromonsConfig,
+            PheromonsGradients, DEFAULT, FOOD_SOURCE, FOOD_STORE,
         },
         zombants::spawn_zombant_queen,
     },
@@ -225,6 +225,7 @@ fn camera_movement(
 fn debug_pheromons(
     mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonsGradients)>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
+    phcfg: Res<PheromonsConfig>,
     mut gizmos: Gizmos,
 
     buttons: Res<Input<MouseButton>>,
@@ -270,43 +271,20 @@ fn debug_pheromons(
 
     for (e, n, ph, g) in query_nodes.iter() {
         let t = query_transform.get(e).unwrap();
-        if ph.concentrations[DEFAULT] > 0. {
-            gizmos.circle_2d(
-                t.translation().xy(),
-                ph.concentrations[DEFAULT].max(0.1),
-                Color::PINK,
-            );
-        }
-        gizmos.ray_2d(
-            t.translation().xy(),
-            g.gradients[DEFAULT].xy() * 2.0,
-            Color::BLUE,
-        );
 
-        if ph.concentrations[FOOD_STORE] > 0. {
-            gizmos.circle_2d(
+        for i in 0..N_PHEROMONES {
+            if ph.concentrations[i] > 0. {
+                gizmos.circle_2d(
+                    t.translation().xy(),
+                    ph.concentrations[i].max(0.5),
+                    phcfg.color[i].0,
+                );
+            }
+            gizmos.ray_2d(
                 t.translation().xy(),
-                ph.concentrations[FOOD_STORE].max(0.1),
-                Color::YELLOW_GREEN,
+                g.gradients[i].xy() * 2.0,
+                phcfg.color[i].1,
             );
         }
-        gizmos.ray_2d(
-            t.translation().xy(),
-            g.gradients[FOOD_STORE].xy() * 2.0,
-            Color::YELLOW,
-        );
-
-        if ph.concentrations[FOOD_SOURCE] > 0. {
-            gizmos.circle_2d(
-                t.translation().xy(),
-                ph.concentrations[FOOD_SOURCE].max(0.1),
-                Color::ORANGE,
-            );
-        }
-        gizmos.ray_2d(
-            t.translation().xy(),
-            g.gradients[FOOD_SOURCE].xy() * 2.0,
-            Color::ORANGE_RED,
-        );
     }
 }

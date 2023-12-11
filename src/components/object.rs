@@ -14,7 +14,10 @@ pub enum ObjectKind {
     Default = 0,
     Storage = 1,
     Food = 2,
+    Zombqueen = 3,
+    Zombant = 4,
 }
+pub const N_PHEROMONES: usize = 5;
 
 impl Object {
     pub fn kind(&self) -> usize {

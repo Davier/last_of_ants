@@ -5,8 +5,11 @@ use bevy_rapier2d::prelude::*;
 use rand::{seq::IteratorRandom, thread_rng, Rng};
 
 use super::{
-    ants::{goal::AntGoal, *, movement::AntMovement},
+    ants::{goal::AntGoal, movement::AntMovement, *},
+    dead_ants::DeadAnt,
     nav_mesh::NavNode,
+    object::ObjectKind,
+    pheromones::{self, Pheromons, PheromonsConfig, PheromonsSource},
 };
 
 #[derive(Bundle)]
@@ -105,4 +108,27 @@ pub fn spawn_zombant_queen(
             render_layers: ant_bundle.render_layers,
         })
         .set_parent(entities_holder.get());
+}
+
+pub fn update_zombants_deposit(
+    zombants: Query<&AntMovement, With<DeadAnt>>,
+    mut nodes: Query<&mut Pheromons>,
+    phcfg: Res<PheromonsConfig>,
+) {
+    for ant_movement in zombants.iter() {
+        let mut pheromones = nodes.get_mut(ant_movement.current_node.0).unwrap();
+        pheromones.concentrations[ObjectKind::Zombant as usize] += phcfg.zombant_deposit;
+    }
+}
+
+pub fn update_zombqueen_source(
+    queen: Query<&AntMovement, With<ZombAntQueen>>,
+    mut nodes: Query<&mut Pheromons>,
+    //mut nodes: Query<&mut PheromonsSource>,
+    phcfg: Res<PheromonsConfig>,
+) {
+    if let Ok(queen_movement) = queen.get_single() {
+        let mut pheromones = nodes.get_mut(queen_movement.current_node.0).unwrap();
+        pheromones.concentrations[ObjectKind::Zombqueen as usize] += phcfg.zombqueen_source;
+    }
 }

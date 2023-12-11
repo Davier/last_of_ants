@@ -9,7 +9,7 @@ use bevy_asset_loader::{
     asset_collection::AssetCollection,
     loading_state::{LoadingState, LoadingStateAppExt},
 };
-use bevy_ecs_ldtk::{prelude::*, systems::fire_level_transformed_events};
+use bevy_ecs_ldtk::prelude::*;
 use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 
@@ -23,10 +23,13 @@ use components::{
     cocoons::CocoonBundle,
     nav_mesh::*,
     object::ObjectBundle,
-    pheromons::{init_pheromons, init_sources, PheromonsConfig},
+    pheromones::{init_pheromons, init_sources, PheromonsConfig},
     player::*,
     tiles::*,
-    zombants::{spawn_zombant_queen, ZombAntQueenSpawnPoint},
+    zombants::{
+        spawn_zombant_queen, update_zombants_deposit, update_zombqueen_source,
+        ZombAntQueenSpawnPoint,
+    },
 };
 use helpers::pause_if_not_focused;
 use render::{
@@ -108,6 +111,8 @@ impl Plugin for GamePlugin {
                         update_ant_direction,
                         // update_ant_direction_randomly,
                         update_ant_position,
+                        update_zombants_deposit,
+                        update_zombqueen_source,
                         update_ant_goal,
                         update_metrics,
                     )

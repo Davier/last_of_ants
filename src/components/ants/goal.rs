@@ -1,7 +1,10 @@
 use bevy::prelude::*;
 use bevy::reflect::Reflect;
 
-use crate::components::{object::{Object, ObjectKind}, nav_mesh::NavNode};
+use crate::components::{
+    nav_mesh::NavNode,
+    object::{Object, ObjectKind},
+};
 
 use super::movement::AntMovement;
 
