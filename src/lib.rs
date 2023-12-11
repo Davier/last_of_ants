@@ -91,7 +91,7 @@ impl Plugin for GamePlugin {
                     spawn_player_sensor,
                     spawn_zombant_queen,
                     place_clues,
-                    (init_pheromons, init_sources).chain(),
+                    (init_pheromons, apply_deferred, init_sources).chain(),
                 ),
             )
             .add_systems(
