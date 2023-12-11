@@ -274,6 +274,8 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
+                            // Give a some z direction to avoid blinking
+                            ant_movement.direction.z = 1.;
                             ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                         NavNode::VerticalEdge { is_left_side, .. } => {
@@ -285,6 +287,8 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
+                            // Give a some z direction to avoid blinking
+                            ant_movement.direction.z = 1.;
                             ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                     }
@@ -330,6 +334,7 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
+                            // TODO give some vertical direction away from the horizontal wall
                             ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                         // Otherwise update the transform of wall the ant is currently on
@@ -374,6 +379,7 @@ pub fn update_ant_position_kinds(
                             &mut ant_transform,
                             &wall_transform_relative,
                         );
+                        // TODO giv eant some direction to avoid blinking
                         ant_movement.current_node = (wall_entity, *wall_transform_global);
                     }
                 }
@@ -406,6 +412,7 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
+                            // TODO give some horizontal dir to avoid blinking
                             ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                         // Otherwise update the transform of wall the ant is currently on
@@ -449,6 +456,7 @@ pub fn update_ant_position_kinds(
                             &mut ant_transform,
                             &wall_transform_relative,
                         );
+                        // TODO give some horizontal dir to avoid blinking
                         ant_movement.current_node = (wall_entity, *wall_transform_global);
                     }
                 }
@@ -473,8 +481,6 @@ pub fn update_ant_position_kinds(
                 ANT_MATERIAL_SIDE.clone()
             }
         };
-
-        debug!("ant position kind {:?}", ant_movement.position_kind);
     }
 }
 
@@ -572,8 +578,6 @@ pub fn update_ant_position(
             0.,
             (nav_mesh_lut.tile_height * nav_mesh_lut.grid_height) as f32,
         );
-
-        debug!("ant position {:?}", ant_transform.translation);
     }
 }
 
@@ -619,8 +623,6 @@ fn place_ant_on_horizontal_wall(
 ) {
     // Change position kind
     ant_movement.position_kind = AntPositionKind::HorizontalWall { is_up_side };
-    // Give a some z direction to avoid blinking
-    ant_movement.direction.z = 1.;
     // Re-place ant on the wall
     let offset = (ANT_SIZE.y / 2. - ANT_WALL_CLIPPING) * if is_up_side { -1. } else { 1. };
     ant_transform.translation.y += wall_transform_relative.translation.y + offset;
@@ -637,8 +639,6 @@ fn place_ant_on_vertical_wall(
 ) {
     // Change position kind
     ant_movement.position_kind = AntPositionKind::VerticalWall { is_left_side };
-    // Give a some z direction to avoid blinking
-    ant_movement.direction.z = 1.;
     // Re-place ant on the wall
     let offset = (ANT_SIZE.x / 2. - ANT_WALL_CLIPPING) * if is_left_side { 1. } else { -1. };
     ant_transform.translation.x += wall_transform_relative.translation.x + offset;

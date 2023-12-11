@@ -117,7 +117,6 @@ pub fn init_pheromons(
         };
 
         for (id, node) in nodes.iter() {
-            debug!("Init pheromons for nodes.");
             commands.entity(id).insert((
                 Pheromons::default(),
                 PheromonsBuffers::default(),
@@ -289,27 +288,26 @@ pub fn compute_gradients(
 
 pub fn init_sources(
     mut commands: Commands,
-    sources: Query<(&Object, &ObjectCoords)>,
+    sources: Query<(Entity, &Object, &ObjectCoords)>,
     nav_mesh_lut: Res<NavMeshLUT>,
     mut nodes: Query<&mut PheromonsSource, With<NavNode>>,
-    mut level_events: EventReader<LevelEvent>,
 ) {
-    for level_event in level_events.read() {
-        let LevelEvent::Transformed(_) = level_event else {
-            continue;
-        };
+    for (tile_id, object, ObjectCoords { x, y }) in sources.iter() {
+        let (node_id, _) = nav_mesh_lut
+            .get_tile_entity_grid(*x as usize, *y as usize)
+            .unwrap();
 
-        for (object, ObjectCoords { x, y }) in sources.iter() {
-            let (node_id, _) = nav_mesh_lut
-                .get_tile_entity_grid(*x as usize, *y as usize)
-                .unwrap();
+        if let Ok(mut node_source) = nodes.get_mut(node_id) {
+            node_source.add(object.kind(), object.concentration);
 
-            if let Ok(mut node_source) = nodes.get_mut(node_id) {
-                debug!("Init source.");
-                node_source.add(object.kind(), object.concentration);
-
-                commands.get_entity(node_id).unwrap().insert(*object);
-            }
+            // Object is added to the corresponding NavNode
+            // then removed from the tile so that it won't come up again.
+            commands.get_entity(node_id).unwrap().insert(*object);
+            commands.get_entity(tile_id).unwrap().remove::<Object>();
+            commands
+                .get_entity(tile_id)
+                .unwrap()
+                .remove::<ObjectCoords>();
         }
     }
 }
