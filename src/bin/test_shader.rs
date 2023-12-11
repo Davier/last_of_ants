@@ -99,7 +99,7 @@ fn setup(
                 direction,
                 current_node: (Entity::PLACEHOLDER, GlobalTransform::default()),
                 goal: AntGoal::default(),
-                last_update: 0.,
+                last_direction_update: 0.,
             },
             AntStyle {
                 scale,

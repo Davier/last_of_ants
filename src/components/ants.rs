@@ -172,7 +172,7 @@ impl LiveAntBundle {
                 direction,
                 current_node: current_wall,
                 goal,
-                last_update: 0.0,
+                last_direction_update: 0.0,
             },
             ant_style: AntStyle {
                 scale,
