@@ -11,7 +11,8 @@ use bevy_rapier2d::prelude::*;
 
 use components::{
     ants::{
-        goal::{update_metrics, Metrics},
+        goal::{update_ant_goal, update_metrics, Metrics},
+        movement::update_ant_direction,
         *,
     },
     clues::place_clues,
@@ -69,7 +70,7 @@ impl Plugin for GamePlugin {
                 (
                     place_clues,
                     pause_if_not_focused,
-                    init_pheromons,
+                    init_pheromons.after(fire_level_transformed_events),
                     init_sources.after(init_pheromons), // FIXME doesn't always load in the right order?
                 ),
             )
@@ -93,7 +94,7 @@ impl Plugin for GamePlugin {
             )
             .add_systems(
                 PostUpdate,
-                (spawn_nav_mesh.after(fire_level_transformed_events),),
+                spawn_nav_mesh.after(fire_level_transformed_events),
             );
     }
 }

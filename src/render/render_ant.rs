@@ -3,7 +3,7 @@
 use std::{f32::consts::PI, ops::DerefMut};
 
 use crate::{
-    components::ants::{AntMovement, AntPositionKind, AntStyle},
+    components::ants::{movement::AntMovement, AntPositionKind, AntStyle},
     ANT_SIZE,
 };
 use bevy::{

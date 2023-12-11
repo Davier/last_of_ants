@@ -131,7 +131,7 @@ fn spawn_ants_on_navmesh(
             rng.gen::<f32>() - 0.5,
         )
         .normalize();
-        let color_primary_kind = AntColorKind::new_random(&mut rng);
+        let color_primary_kind = AntColorKind::YELLOW;
         let color_secondary_kind =
             AntColorKind::new_random_from_primary(&mut rng, &color_primary_kind);
         // let color_primary_kind = AntColorKind::BLACK;
@@ -140,7 +140,7 @@ fn spawn_ants_on_navmesh(
         let scale = 1.; // TODO
         let speed = 40.;
         let goal = AntGoal {
-            kind: ObjectKind::Food,
+            kind: ObjectKind::Default,
             holds: 0.,
         };
         LiveAntBundle::spawn_on_nav_node(
@@ -262,7 +262,7 @@ fn debug_pheromons(
         gizmos.circle_2d(closest.1, 0.5, Color::RED);
         gizmos.ray_2d(
             cursor_world_position,
-            closest.4.gradients[DEFAULT],
+            closest.4.gradients[DEFAULT].xy(),
             Color::ALICE_BLUE,
         );
 
@@ -284,7 +284,7 @@ fn debug_pheromons(
         }
         gizmos.ray_2d(
             t.translation().xy(),
-            g.gradients[DEFAULT] * 2.0,
+            g.gradients[DEFAULT].xy() * 2.0,
             Color::BLUE,
         );
 
@@ -297,7 +297,7 @@ fn debug_pheromons(
         }
         gizmos.ray_2d(
             t.translation().xy(),
-            g.gradients[FOOD_STORE] * 2.0,
+            g.gradients[FOOD_STORE].xy() * 2.0,
             Color::YELLOW,
         );
 
@@ -310,7 +310,7 @@ fn debug_pheromons(
         }
         gizmos.ray_2d(
             t.translation().xy(),
-            g.gradients[FOOD_SOURCE] * 2.0,
+            g.gradients[FOOD_SOURCE].xy() * 2.0,
             Color::ORANGE_RED,
         );
     }

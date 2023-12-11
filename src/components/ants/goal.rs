@@ -1,7 +1,9 @@
 use bevy::prelude::*;
 use bevy::reflect::Reflect;
 
-use crate::components::object::{Object, ObjectKind};
+use crate::components::{object::{Object, ObjectKind}, nav_mesh::NavNode};
+
+use super::movement::AntMovement;
 
 #[derive(Default, Debug, Clone, Copy, Reflect)]
 pub struct AntGoal {
@@ -54,6 +56,20 @@ pub fn update_metrics(mut metrics: ResMut<Metrics>, objects: Query<&Object>) {
         match object.kind {
             ObjectKind::Storage => metrics.food += object.quantity.unwrap_or_default(),
             _ => (),
+        }
+    }
+}
+
+pub fn update_ant_goal(
+    //commands: &mut Commands,
+    mut ants: Query<&mut AntMovement>,
+    mut objects: Query<(Entity, &mut Object), With<NavNode>>,
+) {
+    for mut ant_movement in ants.iter_mut() {
+        if let Ok((object_id, mut object)) = objects.get_mut(ant_movement.current_node.0) {
+            if object.kind == ant_movement.goal.kind {
+                ant_movement.step_goal(/*commands,*/ object_id, &mut object)
+            }
         }
     }
 }

@@ -20,7 +20,9 @@ use super::{
 };
 
 pub mod goal;
+pub mod movement;
 use self::goal::AntGoal;
+use self::movement::AntMovement;
 
 #[derive(Bundle)]
 pub struct LiveAntBundle {
@@ -39,36 +41,6 @@ pub struct LiveAntBundle {
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
 pub struct LiveAnt {}
-
-#[derive(Debug, Clone, Copy, Component, Reflect)]
-pub struct AntMovement {
-    pub position_kind: AntPositionKind,
-    pub speed: f32,
-    pub direction: Vec3,
-    pub current_node: (Entity, GlobalTransform), // FIXME: use relative transforms
-    pub goal: AntGoal,
-}
-
-impl AntMovement {
-    fn step_goal(
-        &mut self,
-        /*commands: &mut Commands, FIXME breaks trait for `.chain` in lib */
-        object_id: Entity,
-        mut object: &mut Object,
-    ) {
-        match object.kind {
-            ObjectKind::Default => (),
-            ObjectKind::Storage => self.goal.step_storage(object, &mut self.direction),
-            ObjectKind::Food => {
-                self.goal.step_food(
-                    /*commands,*/ object_id,
-                    &mut object,
-                    &mut self.direction,
-                );
-            }
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
 pub struct AntStyle {
@@ -200,6 +172,7 @@ impl LiveAntBundle {
                 direction,
                 current_node: current_wall,
                 goal,
+                last_update: 0.0,
             },
             ant_style: AntStyle {
                 scale,
@@ -301,6 +274,8 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
+                            // Give a some z direction to avoid blinking
+                            ant_movement.direction.z = 1.;
                             ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                         NavNode::VerticalEdge { is_left_side, .. } => {
@@ -312,6 +287,8 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
+                            // Give a some z direction to avoid blinking
+                            ant_movement.direction.z = 1.;
                             ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                     }
@@ -333,6 +310,8 @@ pub fn update_ant_position_kinds(
                         } else {
                             2. * ANT_WALL_CLIPPING
                         };
+                        // Give a push toward foreground to avoid blinking
+                        ant_movement.direction.y = if is_up_side { -1.0 } else { 1.0 };
                         place_ant_on_background(&mut ant_movement, &mut ant_transform);
                     } else {
                         // On the surface, the ant cannot go to the background
@@ -355,6 +334,7 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
+                            // TODO give some vertical direction away from the horizontal wall
                             ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                         // Otherwise update the transform of wall the ant is currently on
@@ -399,6 +379,7 @@ pub fn update_ant_position_kinds(
                             &mut ant_transform,
                             &wall_transform_relative,
                         );
+                        // TODO giv eant some direction to avoid blinking
                         ant_movement.current_node = (wall_entity, *wall_transform_global);
                     }
                 }
@@ -411,6 +392,8 @@ pub fn update_ant_position_kinds(
                     } else {
                         -2. * ANT_WALL_CLIPPING
                     };
+                    ant_movement.direction.x = if is_left_side { 1.0 } else { -1.0 };
+                    place_ant_on_background(&mut ant_movement, &mut ant_transform);
                     place_ant_on_background(&mut ant_movement, &mut ant_transform);
                 }
                 // Check the closest colliding wall
@@ -429,6 +412,7 @@ pub fn update_ant_position_kinds(
                                 &mut ant_transform,
                                 &wall_transform_relative,
                             );
+                            // TODO give some horizontal dir to avoid blinking
                             ant_movement.current_node = (nav_node_entity, *wall_transform_global);
                         }
                         // Otherwise update the transform of wall the ant is currently on
@@ -472,6 +456,7 @@ pub fn update_ant_position_kinds(
                             &mut ant_transform,
                             &wall_transform_relative,
                         );
+                        // TODO give some horizontal dir to avoid blinking
                         ant_movement.current_node = (wall_entity, *wall_transform_global);
                     }
                 }
@@ -495,7 +480,7 @@ pub fn update_ant_position_kinds(
             AntPositionKind::VerticalWall { .. } | AntPositionKind::HorizontalWall { .. } => {
                 ANT_MATERIAL_SIDE.clone()
             }
-        }
+        };
     }
 }
 
@@ -527,50 +512,6 @@ pub fn assert_ants(
     }
     if !all_ok {
         // time.pause();
-    }
-}
-
-pub fn update_ant_goal(
-    //commands: &mut Commands,
-    mut ants: Query<&mut AntMovement>,
-    mut objects: Query<(Entity, &mut Object), With<NavNode>>,
-) {
-    for mut ant_movement in ants.iter_mut() {
-        if let Ok((object_id, mut object)) = objects.get_mut(ant_movement.current_node.0) {
-            if object.kind == ant_movement.goal.kind {
-                ant_movement.step_goal(/*commands,*/ object_id, &mut object)
-            }
-        }
-    }
-}
-
-/// Calculate desired direction of ants according to the gradient of the current node
-pub fn update_ant_direction(
-    mut ants: Query<&mut AntMovement>,
-    gradients: Query<&PheromonsGradients>,
-) {
-    let mut rng = rand::thread_rng();
-
-    for mut ant_movement in ants.iter_mut() {
-        let closest_gradient = gradients.get(ant_movement.current_node.0).unwrap();
-
-        // the gradient for the pheromon the ant follows is not null: follow it
-        let random = rng.gen_range(0.0..1.0);
-        let goal_gradient = closest_gradient.gradients[ant_movement.goal.kind as usize].extend(0.);
-        if goal_gradient != Vec3::ZERO {
-            // TODO randomize a bit the direction
-            ant_movement.direction = goal_gradient;
-        } else {
-            if 0.01 > random {
-                ant_movement.direction =
-                    Quat::from_rotation_z(rng.gen_range(-(PI / 2.)..(PI / 2.)))
-                        * ant_movement.direction;
-            } else if 0.1 > random {
-                ant_movement.direction =
-                    Quat::from_rotation_z(rng.gen_range(-(PI / 6.)..(PI / 6.)))
-                        * ant_movement.direction;
-            }
-        }
     }
 }
 
