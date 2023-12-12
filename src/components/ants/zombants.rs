@@ -242,7 +242,7 @@ pub fn spawn_zombant_queen(
 }
 
 pub fn update_zombants_deposit(
-    zombants: Query<&AntMovement, With<DeadAnt>>,
+    zombants: Query<&AntMovement, With<ZombAnt>>,
     mut nodes: Query<&mut PheromoneConcentrations>,
     phcfg: Res<PheromoneConfig>,
 ) {

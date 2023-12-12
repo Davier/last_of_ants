@@ -1,7 +1,5 @@
 use bevy::prelude::*;
 
-use self::gradients::PheromoneGradients;
-
 pub mod concentrations;
 pub mod gradients;
 pub mod sources;
