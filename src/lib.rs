@@ -10,29 +10,32 @@ use bevy_asset_loader::{
     loading_state::{LoadingState, LoadingStateAppExt},
 };
 use bevy_ecs_ldtk::prelude::*;
-use bevy_inspector_egui::quick::ResourceInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 
 use components::{
     ants::{
         goal::{update_ant_goal, update_metrics, Metrics},
-        movement::update_ant_direction,
+        movement::direction::update_ant_direction,
         *,
+    },
+    ants::{
+        movement::position::{update_ant_position, update_ant_position_kinds},
+        zombants::{
+            spawn_zombant_queen, update_zombants_deposit, update_zombqueen_source,
+            ZombAntQueenSpawnPoint,
+        },
     },
     clues::place_clues,
     cocoons::CocoonBundle,
     nav_mesh::*,
     object::ObjectBundle,
     pheromones::{
-        apply_sources, compute_gradients, diffuse_pheromons, init_pheromons, init_sources,
-        PheromoneKind, Pheromons, PheromonsConfig, PheromonsGradients, N_PHEROMONE_KINDS,
+        apply_sources, compute_gradients, diffuse_pheromones, init_pheromones, init_sources,
+        PheromoneConcentrations, PheromoneConfig, PheromoneGradients, PheromoneKind,
+        N_PHEROMONE_KINDS,
     },
     player::*,
     tiles::*,
-    zombants::{
-        spawn_zombant_queen, update_zombants_deposit, update_zombqueen_source,
-        ZombAntQueenSpawnPoint,
-    },
 };
 use helpers::{pause_if_not_focused, toggle_on_key};
 use itertools::Itertools;
@@ -63,7 +66,7 @@ impl Plugin for GamePlugin {
             .insert_resource(AssetMetaCheck::Never)
             .init_resource::<NavMeshLUT>()
             .add_event::<ClueEvent>()
-            .init_resource::<PheromonsConfig>()
+            .init_resource::<PheromoneConfig>()
             .init_resource::<Metrics>()
             .add_plugins((
                 DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites? (TODO: test)
@@ -73,10 +76,6 @@ impl Plugin for GamePlugin {
                 CocoonMaterialPlugin,
                 PlayerAnimationPlugin,
             ))
-            //.add_plugins((
-            //    ResourceInspectorPlugin::<PheromonsConfig>::default(),
-            //    ResourceInspectorPlugin::<Metrics>::default(),
-            //))
             .add_state::<AppState>()
             .add_loading_state(
                 LoadingState::new(AppState::Loading)
@@ -96,7 +95,7 @@ impl Plugin for GamePlugin {
                     spawn_player_sensor,
                     spawn_zombant_queen,
                     place_clues,
-                    (init_pheromons, apply_deferred, init_sources).chain(),
+                    (init_pheromones, apply_deferred, init_sources).chain(),
                 ),
             )
             .add_systems(
@@ -106,7 +105,7 @@ impl Plugin for GamePlugin {
             .add_systems(
                 Update,
                 (
-                    debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
+                    debug_pheromones.run_if(toggle_on_key(KeyCode::H)),
                     pause_if_not_focused,
                     update_player_sensor,
                     clues_receive_events,
@@ -121,7 +120,7 @@ impl Plugin for GamePlugin {
                         update_zombqueen_source,
                         update_ant_goal,
                         update_metrics,
-                        diffuse_pheromons,
+                        diffuse_pheromones,
                         apply_sources,
                         compute_gradients,
                     )
@@ -197,10 +196,15 @@ pub const RENDERLAYER_CLUE_ANT: RenderLayers = RenderLayers::layer(3);
 
 pub const CLUE_COLOR: Color = Color::rgb_linear(1., 0.6, 0.);
 
-fn debug_pheromons(
-    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonsGradients)>,
+fn debug_pheromones(
+    mut query_nodes: Query<(
+        Entity,
+        &NavNode,
+        &mut PheromoneConcentrations,
+        &PheromoneGradients,
+    )>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
-    phcfg: Res<PheromonsConfig>,
+    phcfg: Res<PheromoneConfig>,
     mut gizmos: Gizmos,
 
     buttons: Res<Input<MouseButton>>,

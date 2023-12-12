@@ -9,12 +9,14 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, goal::AntGoal, job::Job, AntColorKind, LiveAntBundle},
+        ants::{
+            goal::AntGoal, job::Job, live_ants::LiveAntBundle, movement::position::debug_ants,
+            zombants::ZombAntBundle, AntColorKind,
+        },
         nav_mesh::{debug_nav_mesh, NavNode},
         player::{update_player_sensor, Player},
-        zombants::{spawn_zombant_queen, ZombAntBundle},
     },
-    helpers::{on_key_just_pressed, run_after, toggle_on_key, toggle_physics_debug},
+    helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     render::{
         player_animation::{
             AnimationTimer, EffectAnimationBundle, Explosion, PlayerAnimation, PlayerAnimationState,

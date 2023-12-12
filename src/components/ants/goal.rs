@@ -1,11 +1,9 @@
 use bevy::prelude::*;
 use bevy::reflect::Reflect;
 
-use crate::components::{
-    nav_mesh::NavNode, object::Object, pheromones::PheromoneKind, zombants::ZombAntQueen,
-};
+use crate::components::{nav_mesh::NavNode, object::Object, pheromones::PheromoneKind};
 
-use super::{job::Job, movement::AntMovement};
+use super::{job::Job, movement::AntMovement, zombants::ZombAntQueen};
 
 #[derive(Default, Debug, Clone, Copy, Reflect)]
 pub struct AntGoal {

@@ -9,13 +9,19 @@ use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use itertools::Itertools;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, goal::AntGoal, job::Job, AntColorKind, LiveAnt, LiveAntBundle},
+        ants::{
+            goal::{AntGoal, Metrics},
+            job::Job,
+            live_ants::{LiveAnt, LiveAntBundle},
+            movement::position::debug_ants,
+            zombants::{spawn_zombant_queen, ZombAnt, ZombAntBundle},
+            AntColorKind,
+        },
         nav_mesh::{debug_nav_mesh, NavNode},
         pheromones::{
-            apply_sources, compute_gradients, diffuse_pheromons, PheromoneKind, Pheromons,
-            PheromonsConfig, PheromonsGradients, N_PHEROMONE_KINDS,
+            apply_sources, compute_gradients, diffuse_pheromones, PheromoneConcentrations,
+            PheromoneConfig, PheromoneGradients, PheromoneKind, N_PHEROMONE_KINDS,
         },
-        zombants::{spawn_zombant_queen, ZombAnt, ZombAntBundle},
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     render::{MainCamera2d, MainCamera2dBundle},
@@ -34,6 +40,8 @@ fn main() {
             FrameTimeDiagnosticsPlugin,
             UiCluesPlugin,
             ResourceInspectorPlugin::<Clues>::default(),
+            ResourceInspectorPlugin::<PheromoneConfig>::default(),
+            ResourceInspectorPlugin::<Metrics>::default(),
         ))
         .add_systems(Startup, setup)
         .add_systems(
@@ -45,11 +53,8 @@ fn main() {
                 debug_ants.run_if(toggle_on_key(KeyCode::O)),
                 toggle_physics_debug.run_if(on_key_just_pressed(KeyCode::P)),
                 camera_movement,
-                debug_pheromons.run_if(toggle_on_key(KeyCode::H)),
-                diffuse_pheromons.run_if(toggle_on_key(KeyCode::H)),
+                debug_pheromones.run_if(toggle_on_key(KeyCode::H)),
                 spawn_zombant_queen.run_if(on_key_just_pressed(KeyCode::Z)),
-                apply_sources.after(diffuse_pheromons),
-                compute_gradients.after(apply_sources),
                 update_text_counters,
             ),
         )
@@ -72,7 +77,7 @@ fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
         Press N to show the navigation mesh\n\
         Press I to show the world inspector\n\
         Press P to show the physics debug view\n\
-        Press H to show the pheromons then click left/right to add/sub\n\
+        Press H to show the pheromones then click left/right to add/sub\n\
         Press O to show the ants debug view\n",
                 default(),
             ),
@@ -257,10 +262,15 @@ fn camera_movement(
     }
 }
 
-fn debug_pheromons(
-    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonsGradients)>,
+fn debug_pheromones(
+    mut query_nodes: Query<(
+        Entity,
+        &NavNode,
+        &mut PheromoneConcentrations,
+        &PheromoneGradients,
+    )>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
-    phcfg: Res<PheromonsConfig>,
+    phcfg: Res<PheromoneConfig>,
     mut gizmos: Gizmos,
 
     buttons: Res<Input<MouseButton>>,

@@ -1,27 +1,28 @@
 use std::f32::consts::PI;
 
+use bevy::{ecs::system::EntityCommands, prelude::*, render::view::RenderLayers};
+use bevy_rapier2d::prelude::*;
+use rand::{rngs::ThreadRng, Rng};
+
 use crate::{
+    components::nav_mesh::NavNode,
     render::render_ant::{AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D},
-    resources::nav_mesh_lut::NavMeshLUT,
-    AppState, ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION,
+    ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION,
     COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE,
     WALL_Z_FACTOR,
 };
-use bevy::{ecs::system::EntityCommands, prelude::*, render::view::RenderLayers};
-use bevy_ecs_ldtk::LdtkEntity;
-use bevy_rapier2d::prelude::*;
-use rand::{rngs::ThreadRng, seq::IteratorRandom, thread_rng, Rng};
 
 use super::{
-    ants::{goal::AntGoal, movement::AntMovement, *},
-    dead_ants::DeadAnt,
-    nav_mesh::NavNode,
-    pheromones::{PheromoneKind, Pheromons, PheromonsConfig},
+    goal::AntGoal, movement::position::AntPositionKind, movement::AntMovement, AntColorKind,
+    AntStyle,
 };
 
+#[derive(Debug, Clone, Copy, Component, Reflect)]
+pub struct LiveAnt {}
+
 #[derive(Bundle)]
-pub struct ZombAntBundle {
-    pub zombant: ZombAnt,
+pub struct LiveAntBundle {
+    pub live_ant: LiveAnt,
     pub ant_movement: AntMovement,
     pub ant_style: AntStyle,
     pub material: AntMaterialBundle,
@@ -34,10 +35,7 @@ pub struct ZombAntBundle {
     pub render_layers: RenderLayers,
 }
 
-#[derive(Debug, Clone, Copy, Component, Reflect)]
-pub struct ZombAnt {}
-
-impl ZombAntBundle {
+impl LiveAntBundle {
     #[allow(clippy::too_many_arguments)]
     pub fn new_on_nav_node(
         direction: Vec3,
@@ -92,7 +90,7 @@ impl ZombAntBundle {
         let color_primary = color_primary_kind.generate_color(rng);
         let color_secondary = color_secondary_kind.generate_color(rng);
         Self {
-            zombant: ZombAnt {},
+            live_ant: LiveAnt {},
             ant_movement: AntMovement {
                 position_kind,
                 speed,
@@ -139,7 +137,7 @@ impl ZombAntBundle {
         rng: &mut ThreadRng,
         goal: AntGoal,
     ) -> EntityCommands<'w, 's, 'c> {
-        let mut command = commands.spawn(ZombAntBundle::new_on_nav_node(
+        let mut command = commands.spawn(LiveAntBundle::new_on_nav_node(
             direction,
             speed,
             scale,
@@ -154,112 +152,5 @@ impl ZombAntBundle {
         ));
         command.set_parent(entities_holder);
         command
-    }
-}
-
-#[derive(Bundle)]
-pub struct ZombAntQueenBundle {
-    pub zombant_queen: ZombAntQueen,
-    pub ant_movement: AntMovement,
-    pub ant_style: AntStyle,
-    pub material: AntMaterialBundle,
-    pub collider: Collider,
-    pub sensor: Sensor,
-    pub active_events: ActiveEvents,
-    pub active_collisions: ActiveCollisionTypes,
-    pub colliding_entities: CollidingEntities,
-    pub collision_groups: CollisionGroups,
-    pub render_layers: RenderLayers,
-}
-
-#[derive(Default, Debug, Clone, Copy, Component, Reflect)]
-pub struct ZombAntQueen {
-    pub holds: f32,
-}
-
-#[derive(Debug, Default, Clone, Copy, Component, Reflect, LdtkEntity)]
-pub struct ZombAntQueenSpawnPoint {}
-
-pub fn spawn_zombant_queen(
-    mut commands: Commands,
-    spawn_points: Query<(&Transform, &Parent), With<ZombAntQueenSpawnPoint>>,
-    nav_nodes: Query<(&NavNode, &GlobalTransform)>,
-    global_transforms: Query<&GlobalTransform>,
-    nav_mesh_lut: Res<NavMeshLUT>,
-) {
-    let mut rng = thread_rng();
-    let Some((spawn_point_pos, entities_holder)) = spawn_points.iter().choose(&mut rng) else {
-        error!("There are no spawn points for the zombant queen on the map");
-        return;
-    };
-
-    let nav_node_entity = nav_mesh_lut
-        .get_tile_entity(spawn_point_pos.translation.xy())
-        .unwrap()
-        .0;
-    let (nav_node, nav_node_pos) = nav_nodes.get(nav_node_entity).unwrap();
-    let entities_holder_pos = global_transforms.get(entities_holder.get()).unwrap();
-    let direction = Vec3::new(
-        rng.gen::<f32>() - 0.5,
-        rng.gen::<f32>() - 0.5,
-        rng.gen::<f32>() - 0.5,
-    )
-    .normalize();
-    let color_primary_kind = AntColorKind::new_random(&mut rng);
-    let color_secondary_kind = AntColorKind::new_random_from_primary(&mut rng, &color_primary_kind);
-    let speed = 40.;
-    let scale = 1.; // TODO
-    let ant_bundle = LiveAntBundle::new_on_nav_node(
-        direction,
-        speed,
-        scale,
-        color_primary_kind,
-        color_secondary_kind,
-        nav_node_entity,
-        nav_node,
-        nav_node_pos,
-        entities_holder_pos,
-        &mut rng,
-        AntGoal::default(),
-    );
-    commands
-        .spawn(ZombAntQueenBundle {
-            zombant_queen: ZombAntQueen::default(),
-            ant_movement: ant_bundle.ant_movement,
-            ant_style: ant_bundle.ant_style,
-            material: ant_bundle.material,
-            collider: ant_bundle.collider,
-            sensor: Sensor,
-            active_events: ant_bundle.active_events,
-            active_collisions: ant_bundle.active_collisions,
-            colliding_entities: ant_bundle.colliding_entities,
-            collision_groups: ant_bundle.collision_groups,
-            render_layers: ant_bundle.render_layers,
-        })
-        .set_parent(entities_holder.get());
-}
-
-pub fn update_zombants_deposit(
-    zombants: Query<&AntMovement, With<DeadAnt>>,
-    mut nodes: Query<&mut Pheromons>,
-    phcfg: Res<PheromonsConfig>,
-) {
-    for ant_movement in zombants.iter() {
-        let mut pheromones = nodes.get_mut(ant_movement.current_node.0).unwrap();
-        pheromones.concentrations[PheromoneKind::Zombant as usize] += phcfg.zombant_deposit;
-    }
-}
-
-pub fn update_zombqueen_source(
-    queen: Query<&AntMovement, With<ZombAntQueen>>,
-    mut nodes: Query<&mut Pheromons>,
-    phcfg: Res<PheromonsConfig>,
-    mut next_state: ResMut<NextState<AppState>>,
-) {
-    if let Ok(queen_movement) = queen.get_single() {
-        let mut pheromones = nodes.get_mut(queen_movement.current_node.0).unwrap();
-        pheromones.concentrations[PheromoneKind::Zombqueen as usize] += phcfg.zombqueen_source;
-    } else {
-        next_state.set(AppState::Win);
     }
 }

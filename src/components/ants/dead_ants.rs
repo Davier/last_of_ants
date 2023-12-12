@@ -7,7 +7,7 @@ use crate::{
     RENDERLAYER_ANTS,
 };
 
-use super::ants::AntStyle;
+use super::AntStyle;
 
 #[derive(Debug, Component, Reflect)]
 pub struct DeadAnt;
