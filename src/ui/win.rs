@@ -26,16 +26,18 @@ pub fn display_win(
                 ..default()
             })
             .id();
-        commands.spawn((
-            TextBundle::from_section(
-                "You killed the Zomb'Ant Queen!\nYou win!",
-                TextStyle {
-                    font_size: 120.0,
-                    ..Default::default()
-                },
-            )
-            .with_text_alignment(TextAlignment::Center),
-            WinText,
-        )).set_parent(root);
+        commands
+            .spawn((
+                TextBundle::from_section(
+                    "You killed the Zomb'Ant Queen!\nYou win!",
+                    TextStyle {
+                        font_size: 120.0,
+                        ..Default::default()
+                    },
+                )
+                .with_text_alignment(TextAlignment::Center),
+                WinText,
+            ))
+            .set_parent(root);
     }
 }

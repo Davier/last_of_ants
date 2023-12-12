@@ -3,7 +3,10 @@
 use std::{f32::consts::PI, ops::DerefMut};
 
 use crate::{
-    components::ants::{movement::AntMovement, AntPositionKind, AntStyle},
+    components::ants::{
+        movement::{position::AntPositionKind, AntMovement},
+        AntStyle,
+    },
     ANT_SIZE,
 };
 use bevy::{
@@ -23,8 +26,8 @@ use bevy::{
             RenderCommandResult, RenderPhase, SetItemPipeline, TrackedRenderPass,
         },
         render_resource::{
-            AsBindGroup, BufferUsages, BufferVec, ShaderRef, SpecializedMeshPipelineError,
-            VertexBufferLayout, VertexFormat, VertexStepMode, ShaderType,
+            AsBindGroup, BufferUsages, BufferVec, ShaderRef, ShaderType,
+            SpecializedMeshPipelineError, VertexBufferLayout, VertexFormat, VertexStepMode,
         },
         renderer::{RenderDevice, RenderQueue},
         Extract, Render, RenderApp, RenderSet,
@@ -93,9 +96,12 @@ pub struct AntMaterialUniform {
 
 impl From<&AntMaterial> for AntMaterialUniform {
     fn from(value: &AntMaterial) -> Self {
-        Self { flags: value.flags, _padding: Vec3::ZERO }
+        Self {
+            flags: value.flags,
+            _padding: Vec3::ZERO,
+        }
     }
-} 
+}
 
 const ANT_MATERIAL_FLAG_IS_SIDE: u32 = 0b0001;
 const ANT_MATERIAL_FLAG_IS_DEAD: u32 = 0b0010;
