@@ -30,9 +30,10 @@ use components::{
     nav_mesh::*,
     object::ObjectBundle,
     pheromones::{
-        apply_sources, compute_gradients, diffuse_pheromones, init_pheromones, init_sources,
-        PheromoneConcentrations, PheromoneConfig, PheromoneGradients, PheromoneKind,
-        N_PHEROMONE_KINDS,
+        concentrations::diffuse_pheromones, concentrations::init_pheromones,
+        concentrations::PheromoneConcentrations, gradients::compute_gradients,
+        gradients::PheromoneGradients, sources::apply_sources, sources::init_sources,
+        PheromoneConfig, PheromoneKind, N_PHEROMONE_KINDS,
     },
     player::*,
     tiles::*,
