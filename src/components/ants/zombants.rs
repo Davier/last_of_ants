@@ -3,7 +3,7 @@ use std::f32::consts::PI;
 use crate::{
     components::{
         nav_mesh::NavNode,
-        pheromones::{PheromoneConcentrations, PheromoneConfig, PheromoneKind},
+        pheromones::{concentrations::PheromoneConcentrations, PheromoneConfig, PheromoneKind},
     },
     render::render_ant::{AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D},
     resources::nav_mesh_lut::NavMeshLUT,

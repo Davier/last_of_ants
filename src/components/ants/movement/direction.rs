@@ -1,6 +1,6 @@
 use std::f32::consts::PI;
 
-use crate::components::pheromones::PheromoneGradients;
+use crate::components::pheromones::gradients::PheromoneGradients;
 use bevy::prelude::*;
 
 use super::{position::AntPositionKind, AntMovement};
