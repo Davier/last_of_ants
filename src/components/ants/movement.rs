@@ -7,10 +7,9 @@ use rand::Rng;
 use crate::components::{
     object::Object,
     pheromones::{PheromoneKind, PheromonsGradients},
-    zombants::ZombAntQueen,
 };
 
-use super::{goal::AntGoal, AntPositionKind};
+use super::{goal::AntGoal, position::AntPositionKind, zombants::ZombAntQueen};
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]
 pub struct AntMovement {
@@ -97,6 +96,21 @@ pub fn update_ant_direction(
                     }
                 }
             }
+        }
+    }
+}
+
+pub fn update_ant_direction_randomly(mut ants: Query<&mut AntMovement>, time: Res<Time>) {
+    let mut rng = rand::thread_rng();
+    let dt = time.delta_seconds_f64();
+    for mut ant_movement in ants.iter_mut() {
+        if rng.gen_bool(dt) {
+            ant_movement.direction = Vec3::new(
+                rng.gen::<f32>() - 0.5,
+                rng.gen::<f32>() - 0.5,
+                rng.gen::<f32>() - 0.5,
+            )
+            .normalize();
         }
     }
 }

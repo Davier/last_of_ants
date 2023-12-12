@@ -9,13 +9,19 @@ use bevy_rapier2d::render::RapierDebugRenderPlugin;
 use itertools::Itertools;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, goal::AntGoal, job::Job, AntColorKind, LiveAnt, LiveAntBundle},
+        ants::{
+            goal::AntGoal,
+            job::Job,
+            live_ants::{LiveAnt, LiveAntBundle},
+            position::debug_ants,
+            zombants::{spawn_zombant_queen, ZombAntBundle},
+            AntColorKind,
+        },
         nav_mesh::{debug_nav_mesh, NavNode},
         pheromones::{
-            apply_sources, compute_gradients, diffuse_pheromons, PheromoneKind, Pheromons,
-            PheromonsConfig, PheromonsGradients, N_PHEROMONE_KINDS,
+            apply_sources, compute_gradients, diffuse_pheromons, PheromoneConcentrations,
+            PheromoneConfig, PheromoneKind, PheromonsGradients, N_PHEROMONE_KINDS,
         },
-        zombants::{spawn_zombant_queen, ZombAnt, ZombAntBundle},
     },
     helpers::{on_key_just_pressed, toggle_on_key, toggle_physics_debug},
     render::{MainCamera2d, MainCamera2dBundle},
@@ -258,9 +264,14 @@ fn camera_movement(
 }
 
 fn debug_pheromons(
-    mut query_nodes: Query<(Entity, &NavNode, &mut Pheromons, &PheromonsGradients)>,
+    mut query_nodes: Query<(
+        Entity,
+        &NavNode,
+        &mut PheromoneConcentrations,
+        &PheromonsGradients,
+    )>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
-    phcfg: Res<PheromonsConfig>,
+    phcfg: Res<PheromoneConfig>,
     mut gizmos: Gizmos,
 
     buttons: Res<Input<MouseButton>>,

@@ -9,10 +9,9 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier2d::prelude::*;
 use last_of_ants::{
     components::{
-        ants::{debug_ants, goal::AntGoal, AntColorKind, LiveAntBundle},
+        ants::{goal::AntGoal, live_ants::LiveAntBundle, position::debug_ants, AntColorKind},
         nav_mesh::{debug_nav_mesh, NavNode},
         player::{update_player_sensor, Player},
-        zombants::spawn_zombant_queen,
     },
     helpers::{on_key_just_pressed, run_after, toggle_on_key, toggle_physics_debug},
     render::{
@@ -22,7 +21,7 @@ use last_of_ants::{
         MainCamera2d, MainCamera2dBundle,
     },
     ui::ui_clues::UiCluesPlugin,
-    GamePlugin, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION, PLAYER_SIZE, TILE_SIZE, AppState,
+    AppState, GamePlugin, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION, PLAYER_SIZE, TILE_SIZE,
 };
 use rand::{seq::IteratorRandom, Rng};
 
@@ -47,7 +46,10 @@ fn main() {
                 spawn_explosions,
             ),
         )
-        .add_systems(OnEnter(AppState::ProcessingOthers), (spawn_ants_on_navmesh, attach_camera_to_player))
+        .add_systems(
+            OnEnter(AppState::ProcessingOthers),
+            (spawn_ants_on_navmesh, attach_camera_to_player),
+        )
         .insert_resource(LevelSelection::index(0))
         .run();
 }

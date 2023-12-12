@@ -1,6 +1,10 @@
 use std::f32::consts::PI;
 
 use crate::{
+    components::{
+        nav_mesh::NavNode,
+        pheromones::{PheromoneConcentrations, PheromoneConfig, PheromoneKind},
+    },
     render::render_ant::{AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D},
     resources::nav_mesh_lut::NavMeshLUT,
     ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION,
@@ -13,10 +17,8 @@ use bevy_rapier2d::prelude::*;
 use rand::{rngs::ThreadRng, seq::IteratorRandom, thread_rng, Rng};
 
 use super::{
-    ants::{goal::AntGoal, movement::AntMovement, *},
-    dead_ants::DeadAnt,
-    nav_mesh::NavNode,
-    pheromones::{PheromoneKind, Pheromons, PheromonsConfig},
+    dead_ants::DeadAnt, goal::AntGoal, live_ants::LiveAntBundle, movement::AntMovement,
+    position::AntPositionKind, AntColorKind, AntStyle,
 };
 
 #[derive(Bundle)]
@@ -241,8 +243,8 @@ pub fn spawn_zombant_queen(
 
 pub fn update_zombants_deposit(
     zombants: Query<&AntMovement, With<DeadAnt>>,
-    mut nodes: Query<&mut Pheromons>,
-    phcfg: Res<PheromonsConfig>,
+    mut nodes: Query<&mut PheromoneConcentrations>,
+    phcfg: Res<PheromoneConfig>,
 ) {
     for ant_movement in zombants.iter() {
         let mut pheromones = nodes.get_mut(ant_movement.current_node.0).unwrap();
@@ -252,9 +254,9 @@ pub fn update_zombants_deposit(
 
 pub fn update_zombqueen_source(
     queen: Query<&AntMovement, With<ZombAntQueen>>,
-    mut nodes: Query<&mut Pheromons>,
+    mut nodes: Query<&mut PheromoneConcentrations>,
     //mut nodes: Query<&mut PheromonsSource>,
-    phcfg: Res<PheromonsConfig>,
+    phcfg: Res<PheromoneConfig>,
 ) {
     if let Ok(queen_movement) = queen.get_single() {
         let mut pheromones = nodes.get_mut(queen_movement.current_node.0).unwrap();

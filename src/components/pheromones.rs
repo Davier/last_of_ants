@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_ecs_ldtk::LevelEvent;
 
 use crate::{components::object::ObjectCoords, resources::nav_mesh_lut::NavMeshLUT};
 
@@ -21,7 +20,7 @@ pub const FOOD_STORE: usize = 1;
 pub const FOOD_SOURCE: usize = 2;
 
 #[derive(Resource, Reflect)]
-pub struct PheromonsConfig {
+pub struct PheromoneConfig {
     evaporation_rate: [f32; N_PHEROMONE_KINDS],
     diffusion_rate: [f32; N_PHEROMONE_KINDS],
     diffusion_floor: [f32; N_PHEROMONE_KINDS],
@@ -31,7 +30,7 @@ pub struct PheromonsConfig {
     pub zombqueen_source: f32,
 }
 
-impl Default for PheromonsConfig {
+impl Default for PheromoneConfig {
     fn default() -> Self {
         use PheromoneKind::*;
 
@@ -65,7 +64,7 @@ impl Default for PheromonsConfig {
 
 #[derive(Bundle)]
 pub struct PheromoneSourceBundle {
-    value: PheromonsSource,
+    value: PheromoneSources,
     coord: SourceCoord,
 }
 
@@ -76,11 +75,11 @@ pub struct SourceCoord {
 }
 
 #[derive(Component, Debug, Default)]
-pub struct PheromonsSource {
+pub struct PheromoneSources {
     pub concentrations: Option<[f32; N_PHEROMONE_KINDS]>,
 }
 
-impl PheromonsSource {
+impl PheromoneSources {
     pub fn set(&mut self, kind: usize, concentration: f32) {
         if let Some(mut concentrations) = self.concentrations {
             concentrations[kind] = concentration;
@@ -121,11 +120,11 @@ impl PheromonsSource {
 }
 
 #[derive(Component)]
-pub struct PheromonsBuffers {
+pub struct PheromoneBuffers {
     pub add_buffer: [f32; N_PHEROMONE_KINDS],
 }
 
-impl Default for PheromonsBuffers {
+impl Default for PheromoneBuffers {
     fn default() -> Self {
         Self {
             add_buffer: [0.0; N_PHEROMONE_KINDS],
@@ -134,11 +133,11 @@ impl Default for PheromonsBuffers {
 }
 
 #[derive(Component)]
-pub struct Pheromons {
+pub struct PheromoneConcentrations {
     pub concentrations: [f32; N_PHEROMONE_KINDS],
 }
 
-impl Default for Pheromons {
+impl Default for PheromoneConcentrations {
     fn default() -> Self {
         Self {
             concentrations: [0.0; N_PHEROMONE_KINDS],
@@ -159,21 +158,18 @@ impl Default for PheromonsGradients {
     }
 }
 
-pub fn init_pheromons(
-    mut commands: Commands,
-    nodes: Query<(Entity, &NavNode), Added<NavNode>>,
-) {
+pub fn init_pheromons(mut commands: Commands, nodes: Query<(Entity, &NavNode), Added<NavNode>>) {
     for (id, node) in nodes.iter() {
         commands.entity(id).insert((
-            Pheromons::default(),
-            PheromonsBuffers::default(),
+            PheromoneConcentrations::default(),
+            PheromoneBuffers::default(),
             PheromonsGradients::default(),
-            PheromonsSource::default(),
+            PheromoneSources::default(),
         ));
     }
 }
 
-pub fn apply_sources(mut nodes: Query<(&mut Pheromons, &PheromonsSource)>) {
+pub fn apply_sources(mut nodes: Query<(&mut PheromoneConcentrations, &PheromoneSources)>) {
     for (mut pheromons, source) in nodes.iter_mut() {
         if let Some(concentrations) = source.concentrations {
             pheromons.concentrations = concentrations;
@@ -182,9 +178,9 @@ pub fn apply_sources(mut nodes: Query<(&mut Pheromons, &PheromonsSource)>) {
 }
 
 pub fn diffuse_pheromons(
-    mut nav_nodes: Query<(Entity, &NavNode, &mut Pheromons), With<PheromonsBuffers>>,
-    mut pheromon_buffers: Query<&mut PheromonsBuffers, With<Pheromons>>,
-    phcfg: Res<PheromonsConfig>,
+    mut nav_nodes: Query<(Entity, &NavNode, &mut PheromoneConcentrations), With<PheromoneBuffers>>,
+    mut pheromon_buffers: Query<&mut PheromoneBuffers, With<PheromoneConcentrations>>,
+    phcfg: Res<PheromoneConfig>,
 ) {
     for i in 0..N_PHEROMONE_KINDS {
         // Compute diffusion to neighbours
@@ -252,7 +248,7 @@ impl GradientComponents {
 
 pub fn compute_gradients(
     mut gradients: Query<(Entity, &mut PheromonsGradients)>,
-    nodes: Query<(&NavNode, &Pheromons)>,
+    nodes: Query<(&NavNode, &PheromoneConcentrations)>,
 ) {
     for i in 0..N_PHEROMONE_KINDS {
         for (entity, mut gradient) in gradients.iter_mut() {
@@ -336,7 +332,7 @@ pub fn init_sources(
     mut commands: Commands,
     sources: Query<(Entity, &Object, &ObjectCoords)>,
     nav_mesh_lut: Res<NavMeshLUT>,
-    mut nodes: Query<&mut PheromonsSource, With<NavNode>>,
+    mut nodes: Query<&mut PheromoneSources, With<NavNode>>,
 ) {
     for (tile_id, object, ObjectCoords { x, y }) in sources.iter() {
         let (node_id, _) = nav_mesh_lut

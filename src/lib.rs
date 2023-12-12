@@ -17,19 +17,20 @@ use components::{
     ants::{
         goal::{update_ant_goal, update_metrics, Metrics},
         movement::update_ant_direction,
+        position::{update_ant_position, update_ant_position_kinds},
+        zombants::{
+            spawn_zombant_queen, update_zombants_deposit, update_zombqueen_source,
+            ZombAntQueenSpawnPoint,
+        },
         *,
     },
     clues::place_clues,
     cocoons::CocoonBundle,
     nav_mesh::*,
     object::ObjectBundle,
-    pheromones::{init_pheromons, init_sources, PheromonsConfig},
+    pheromones::{init_pheromons, init_sources, PheromoneConfig},
     player::*,
     tiles::*,
-    zombants::{
-        spawn_zombant_queen, update_zombants_deposit, update_zombqueen_source,
-        ZombAntQueenSpawnPoint,
-    },
 };
 use helpers::pause_if_not_focused;
 use render::{
@@ -58,7 +59,7 @@ impl Plugin for GamePlugin {
             .insert_resource(AssetMetaCheck::Never)
             .init_resource::<NavMeshLUT>()
             .add_event::<ClueEvent>()
-            .init_resource::<PheromonsConfig>()
+            .init_resource::<PheromoneConfig>()
             .init_resource::<Metrics>()
             .add_plugins((
                 DefaultPlugins.set(ImagePlugin::default_nearest()), // prevents blurry sprites? (TODO: test)
@@ -69,7 +70,7 @@ impl Plugin for GamePlugin {
                 PlayerAnimationPlugin,
             ))
             .add_plugins((
-                ResourceInspectorPlugin::<PheromonsConfig>::default(),
+                ResourceInspectorPlugin::<PheromoneConfig>::default(),
                 ResourceInspectorPlugin::<Metrics>::default(),
             ))
             .add_state::<AppState>()

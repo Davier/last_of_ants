@@ -10,10 +10,7 @@ use bevy::{
 };
 
 use crate::{
-    components::{
-        ants::{AntColorKind, AntStyle},
-        zombants::ZombAntQueen,
-    },
+    components::ants::{zombants::ZombAntQueen, AntColorKind, AntStyle},
     render::render_ant::{AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MESH2D},
     resources::clues::Clues,
     CLUE_COLOR, RENDERLAYER_CLUE_ANT,
