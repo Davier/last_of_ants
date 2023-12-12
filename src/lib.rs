@@ -14,16 +14,17 @@ use bevy_rapier2d::prelude::*;
 
 use components::{
     ants::{
-        goal::{update_ant_goal, update_metrics, Metrics},
-        movement::direction::update_ant_direction,
-        *,
-    },
-    ants::{
+        dead_ants::update_dead_ants_deposit,
         movement::position::{update_ant_position, update_ant_position_kinds},
         zombants::{
             spawn_zombant_queen, update_zombants_deposit, update_zombqueen_source,
             ZombAntQueenSpawnPoint,
         },
+    },
+    ants::{
+        goal::{update_ant_goal, update_metrics, Metrics},
+        movement::direction::update_ant_direction,
+        *,
     },
     clues::place_clues,
     cocoons::CocoonBundle,
@@ -117,6 +118,7 @@ impl Plugin for GamePlugin {
                         update_ant_direction,
                         // update_ant_direction_randomly,
                         update_ant_position,
+                        update_dead_ants_deposit,
                         update_zombants_deposit,
                         update_zombqueen_source,
                         update_ant_goal,

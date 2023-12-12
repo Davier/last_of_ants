@@ -2,12 +2,16 @@ use bevy::{prelude::*, render::view::RenderLayers};
 use bevy_rapier2d::prelude::*;
 
 use crate::{
+    components::pheromones::{
+        concentrations::PheromoneConcentrations, PheromoneConfig, PheromoneKind,
+    },
     render::render_ant::{AntMaterialBundle, ANT_MATERIAL_DEAD, ANT_MESH2D},
+    resources::nav_mesh_lut::NavMeshLUT,
     ANT_SIZE, COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_WALLS,
     RENDERLAYER_ANTS,
 };
 
-use super::AntStyle;
+use super::{movement::AntMovement, AntStyle};
 
 #[derive(Debug, Component, Reflect)]
 pub struct DeadAnt;
@@ -52,5 +56,20 @@ impl DeadAntBundle {
             active_events: ActiveEvents::all(),
             active_collisions: ActiveCollisionTypes::all(),
         }
+    }
+}
+
+pub fn update_dead_ants_deposit(
+    dead_ants: Query<&GlobalTransform, With<DeadAnt>>,
+    mut nodes: Query<&mut PheromoneConcentrations>,
+    navmesh_lut: Res<NavMeshLUT>,
+    phcfg: Res<PheromoneConfig>,
+) {
+    for dead_ant_transform in dead_ants.iter() {
+        let (node, _) = navmesh_lut
+            .get_tile_entity(dead_ant_transform.translation().xy())
+            .unwrap();
+        let mut pheromones = nodes.get_mut(node).unwrap();
+        pheromones.concentrations[PheromoneKind::DeadAnt as usize] += phcfg.dead_ant_deposit;
     }
 }
