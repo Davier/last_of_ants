@@ -82,7 +82,6 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 fn fragment(
     in: VertexOutput,
 ) -> @location(0) vec4<f32> {
-
     if (material.flags & ANT_MATERIAL_FLAG_IS_DEAD) != 0u {
         return fragment_dead(in);
     } else {

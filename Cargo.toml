@@ -15,6 +15,10 @@ opt-level = 3
 [profile.release]
 codegen-units = 1
 
+[features]
+webgl = []
+default = ["webgl"]
+
 [dependencies]
 bevy = "0.12.1"
 bevy-inspector-egui = "0.21.0"
@@ -119,8 +123,8 @@ bevy_winit = { git = "https://github.com/Davier/bevy.git", branch = "custom-0.12
 # bevy_window = { path = "../bevy/crates/bevy_window" }
 # bevy_winit = { path = "../bevy/crates/bevy_winit" }
 
-# [target.'cfg(not(target_family = "wasm"))'.dependencies]
-# bevy = { version = "0.12.1", features = ["file_watcher", "dynamic_linking"] } 
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+bevy = { version = "0.12.1", features = ["file_watcher", "dynamic_linking"] } 
 
 [[bin]]
 name = "map_viewer"

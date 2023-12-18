@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_ecs_ldtk::prelude::{LdtkEntity, LdtkFields};
 
-use super::pheromones::PheromoneKind;
+use crate::components::pheromones::PheromoneKind;
 
 #[derive(Clone, Default, Debug, Copy, Component, Reflect)]
 pub struct Object {

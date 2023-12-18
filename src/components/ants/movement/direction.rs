@@ -1,9 +1,10 @@
 use std::f32::consts::PI;
 
-use crate::components::pheromones::gradients::PheromoneGradients;
+use crate::components::{
+    ants::movement::{position::AntPositionKind, AntMovement},
+    pheromones::gradients::PheromoneGradients,
+};
 use bevy::prelude::*;
-
-use super::{position::AntPositionKind, AntMovement};
 
 use rand::Rng;
 

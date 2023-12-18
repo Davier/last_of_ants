@@ -89,8 +89,7 @@ pub fn ant_explosion_collision(
         for colliding_entity in colliding_entities.iter() {
             if explosions.contains(colliding_entity) {
                 // Despawn ant
-                commands.entity(parent.get()).remove_children(&[ant]);
-                commands.entity(ant).despawn();
+                commands.entity(ant).remove_parent().despawn();
                 // Spawn dead ant
                 commands
                     .spawn(DeadAntBundle::new(*ant_transform, *ant_style))

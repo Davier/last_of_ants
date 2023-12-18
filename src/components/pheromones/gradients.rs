@@ -1,9 +1,9 @@
 use bevy::prelude::*;
 
-use crate::components::nav_mesh::NavNode;
-
-use super::concentrations::PheromoneConcentrations;
-use super::N_PHEROMONE_KINDS;
+use crate::components::{
+    nav_mesh::NavNode,
+    pheromones::{concentrations::PheromoneConcentrations, N_PHEROMONE_KINDS},
+};
 
 #[derive(Component)]
 pub struct PheromoneGradients {

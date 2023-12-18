@@ -44,7 +44,9 @@ fn main() {
                 debug_nav_mesh.run_if(toggle_on_key(KeyCode::N)),
                 debug_ants.run_if(toggle_on_key(KeyCode::O)),
                 toggle_physics_debug.run_if(on_key_just_pressed(KeyCode::P)),
-                player_movement.after(update_player_sensor),
+                player_movement
+                    .run_if(in_state(AppState::Playing))
+                    .after(update_player_sensor),
                 //spawn_ants_on_navmesh.run_if(run_after(10)), // FIXME
                 spawn_explosions,
             ),
@@ -57,12 +59,13 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut commands: Commands) {
     let mut camera = MainCamera2dBundle::default();
     camera.camera.projection.scale = 0.5;
     commands.spawn(camera);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn player_movement(
     mut players: Query<
         (
@@ -123,7 +126,7 @@ fn player_movement(
     let _right_pressed = inputs.pressed(KeyCode::D) || inputs.pressed(KeyCode::Right);
     let left_pressed = _left_pressed && !_right_pressed;
     let right_pressed = _right_pressed && !_left_pressed;
-    let up_pressed = inputs.pressed(KeyCode::W) || inputs.pressed(KeyCode::Up);
+    let _up_pressed = inputs.pressed(KeyCode::W) || inputs.pressed(KeyCode::Up);
     let down_pressed = inputs.pressed(KeyCode::S) || inputs.pressed(KeyCode::Down);
     let shift_pressed = inputs.pressed(KeyCode::ShiftLeft);
 

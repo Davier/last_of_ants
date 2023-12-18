@@ -2,6 +2,7 @@ use bevy::{prelude::*, render::view::RenderLayers};
 use bevy_rapier2d::prelude::*;
 
 use crate::{
+    components::ants::AntStyle,
     components::pheromones::{
         concentrations::PheromoneConcentrations, PheromoneConfig, PheromoneKind,
     },
@@ -10,8 +11,6 @@ use crate::{
     ANT_SIZE, COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER, COLLISION_GROUP_WALLS,
     RENDERLAYER_ANTS,
 };
-
-use super::{movement::AntMovement, AntStyle};
 
 #[derive(Debug, Component, Reflect)]
 pub struct DeadAnt;

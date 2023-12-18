@@ -1,12 +1,13 @@
 //! A material that draws ants
 
-use std::{f32::consts::PI, ops::DerefMut};
+use std::{f32::consts::PI, mem::size_of, ops::DerefMut};
 
 use crate::{
     components::ants::{
         movement::{position::AntPositionKind, AntMovement},
         AntStyle,
     },
+    render::render_cocoon::CocoonMaterial,
     ANT_SIZE,
 };
 use bevy::{
@@ -33,14 +34,13 @@ use bevy::{
         Extract, Render, RenderApp, RenderSet,
     },
     sprite::{
-        extract_mesh2d, Material2d, Material2dPlugin, MaterialMesh2dBundle, Mesh2dHandle,
-        RenderMesh2dInstance, RenderMesh2dInstances, SetMaterial2dBindGroup, SetMesh2dBindGroup,
-        SetMesh2dViewBindGroup,
+        extract_mesh2d, Material2d, Material2dPlugin, MaterialMesh2dBundle, Mesh2d, Mesh2dHandle,
+        Mesh2dUniform, RenderMesh2dInstance, RenderMesh2dInstances, SetMaterial2dBindGroup,
+        SetMesh2dBindGroup, SetMesh2dViewBindGroup,
     },
+    utils::nonmax::NonMaxU32,
 };
 use bytemuck::{Pod, Zeroable};
-
-use super::render_cocoon::CocoonMaterial;
 
 pub struct AntMaterialPlugin;
 impl Plugin for AntMaterialPlugin {
@@ -183,15 +183,27 @@ impl Default for AntMaterialMeta {
 #[derive(Debug, Component)]
 pub struct RenderAnt {
     instance: AntMaterialInstance,
+    index: u64,
 }
 
 #[repr(C)]
-#[derive(Debug, Default, Copy, Clone, Pod, Zeroable, Component)]
+#[derive(Debug, Copy, Clone, Pod, Zeroable, Component)]
 pub struct AntMaterialInstance {
     color_primary: Vec4,
     color_secondary: Vec4,
     animation_phase: f32,
     _padding: Vec3,
+}
+
+impl Default for AntMaterialInstance {
+    fn default() -> Self {
+        Self {
+            color_primary: Color::WHITE.into(),
+            color_secondary: Color::PURPLE.into(),
+            animation_phase: 0.,
+            _padding: Default::default(),
+        }
+    }
 }
 
 impl ExtractComponent for RenderAnt {
@@ -211,6 +223,7 @@ impl ExtractComponent for RenderAnt {
                 animation_phase: ant_style.animation_phase,
                 _padding: Vec3::ZERO,
             },
+            index: u64::MAX,
         })
     }
 }
@@ -221,13 +234,17 @@ pub fn prepare_ant_material(
     phases: Query<&mut RenderPhase<Transparent2d>>,
     draw_functions: Res<DrawFunctions<Transparent2d>>,
     mut ant_material_meta: ResMut<AntMaterialMeta>,
-    ants: Query<&RenderAnt>,
+    mut ants: Query<&mut RenderAnt>,
+    meshes: Query<(), With<Mesh2d>>,
 ) {
     for phase in phases.iter() {
         for item in phase.items.iter() {
+            if !meshes.contains(item.entity) {
+                continue;
+            }
             if item.draw_function == AntMaterial::draw_function_id(&draw_functions) {
-                let ant = ants.get(item.entity).unwrap();
-                ant_material_meta.instances.push(ant.instance);
+                let mut ant = ants.get_mut(item.entity).unwrap();
+                ant.index = ant_material_meta.instances.push(ant.instance) as u64;
             } else if item.draw_function == CocoonMaterial::draw_function_id(&draw_functions) {
                 // All other Material2d share the same vertex buffer 0, so we need to add a
                 // placeholder entry in the instance buffer...
@@ -300,13 +317,13 @@ impl<P: PhaseItem> RenderCommand<P> for DrawAnt {
         SRes<AntMaterialMeta>,
     );
     type ViewWorldQuery = ();
-    type ItemWorldQuery = ();
+    type ItemWorldQuery = Read<RenderAnt>;
 
     #[inline]
     fn render<'w>(
         item: &P,
         _view: (),
-        _item_query: (),
+        ant: &RenderAnt,
         (meshes, render_mesh2d_instances, ant_material_meta): SystemParamItem<'w, '_, Self::Param>,
         pass: &mut TrackedRenderPass<'w>,
     ) -> RenderCommandResult {
@@ -323,7 +340,27 @@ impl<P: PhaseItem> RenderCommand<P> for DrawAnt {
         };
 
         pass.set_vertex_buffer(0, gpu_mesh.vertex_buffer.slice(..));
+
         // In addition to the normal mesh2d drawing, we have a second vertex buffer
+        // On WASM, the mesh instance buffer is chunked, so we need to slice our buffer accordingly.
+
+        let batch_range = item.batch_range().clone();
+        #[cfg(all(feature = "webgl", target_arch = "wasm32"))]
+        pass.set_push_constants(
+            bevy::render::render_resource::ShaderStages::VERTEX,
+            0,
+            &(batch_range.start as i32).to_le_bytes(),
+        );
+
+        // TODO: bind buffer at the index of the first ant
+        let _ = ant.index;
+        let ant_buffer_start = (item
+            .dynamic_offset()
+            .unwrap_or(NonMaxU32::new(0).unwrap())
+            .get() as usize
+            / size_of::<Mesh2dUniform>()
+            * size_of::<AntMaterialInstance>()) as u64;
+
         pass.set_vertex_buffer(
             1,
             ant_material_meta
@@ -331,16 +368,9 @@ impl<P: PhaseItem> RenderCommand<P> for DrawAnt {
                 .instances
                 .buffer()
                 .unwrap()
-                .slice(..),
+                .slice(ant_buffer_start..),
         );
 
-        let batch_range = item.batch_range();
-        #[cfg(all(feature = "webgl", target_arch = "wasm32"))]
-        pass.set_push_constants(
-            ShaderStages::VERTEX,
-            0,
-            &(batch_range.start as i32).to_le_bytes(),
-        );
         match &gpu_mesh.buffer_info {
             GpuBufferInfo::Indexed {
                 buffer,

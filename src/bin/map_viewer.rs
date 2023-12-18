@@ -62,7 +62,7 @@ fn main() {
         .run();
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut commands: Commands) {
     let mut camera = MainCamera2dBundle::default();
     camera.camera.transform = Transform::from_xyz(500., 500., 0.);
     commands.spawn(camera);
@@ -201,7 +201,7 @@ fn spawn_ants_on_navmesh(
 #[derive(Debug, Clone, Copy, Component, Reflect)]
 struct MovementGoal(Entity);
 
-fn move_ants_on_mesh(
+fn _move_ants_on_mesh(
     mut ants: Query<(&mut MovementGoal, &Parent, &mut Transform)>,
     mut transforms: Query<&GlobalTransform>,
     nav_nodes: Query<&NavNode>,
@@ -263,12 +263,7 @@ fn camera_movement(
 }
 
 fn debug_pheromones(
-    mut query_nodes: Query<(
-        Entity,
-        &NavNode,
-        &mut PheromoneConcentrations,
-        &PheromoneGradients,
-    )>,
+    mut query_nodes: Query<(Entity, &mut PheromoneConcentrations, &PheromoneGradients)>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
     phcfg: Res<PheromoneConfig>,
     mut gizmos: Gizmos,
@@ -287,7 +282,7 @@ fn debug_pheromones(
         // debug!("Cursor at: {:?}", cursor_world_position);
         let mut distances = query_nodes
             .iter_mut()
-            .map(|(id, _, ph, gd)| {
+            .map(|(id, ph, gd)| {
                 let pos = query_transform.get(id).unwrap().translation().xy();
                 (id, pos, pos.distance(cursor_world_position), ph, gd)
             })
@@ -314,7 +309,7 @@ fn debug_pheromones(
         }
     }
 
-    for (e, n, ph, g) in query_nodes.iter() {
+    for (e, ph, g) in query_nodes.iter() {
         let t = query_transform.get(e).unwrap();
 
         for i in 0..N_PHEROMONE_KINDS {

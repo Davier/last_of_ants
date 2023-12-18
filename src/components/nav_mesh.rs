@@ -463,8 +463,7 @@ pub fn spawn_nav_mesh(
             let get_down_edge = |neighbor: Option<Index2d>| {
                 neighbor
                     .filter(|neighbor| grid_int[neighbor.i()] != TILE_INT_GROUND)
-                    .map(|neighbor| grid_edges[neighbor.i()].down)
-                    .flatten()
+                    .and_then(|neighbor| grid_edges[neighbor.i()].down)
             };
             let left_edge_entity = get_down_edge(tile.left());
             let left_edge = match left_edge_entity {

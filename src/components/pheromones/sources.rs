@@ -4,11 +4,10 @@ use crate::{
     components::{
         nav_mesh::NavNode,
         object::{Object, ObjectCoords},
+        pheromones::{concentrations::PheromoneConcentrations, N_PHEROMONE_KINDS},
     },
     resources::nav_mesh_lut::NavMeshLUT,
 };
-
-use super::{concentrations::PheromoneConcentrations, N_PHEROMONE_KINDS};
 
 #[derive(Bundle)]
 pub struct PheromoneSourcesBundle {

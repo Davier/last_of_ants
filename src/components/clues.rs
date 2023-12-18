@@ -1,5 +1,4 @@
 use bevy::prelude::*;
-use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
 use rand::{
     seq::{IteratorRandom, SliceRandom},
@@ -7,11 +6,10 @@ use rand::{
 };
 
 use crate::{
+    components::cocoons::Cocoon,
     render::render_cocoon::{CocoonMaterial, COCOON_MATERIAL_CLUE},
     CLUES_NUMBER, COCOON_ROOMS, COLLISION_GROUP_CLUE, COLLISION_GROUP_PLAYER_SENSOR,
 };
-
-use super::cocoons::Cocoon;
 
 #[derive(Debug, Default, Clone, Copy, Component, Reflect)]
 pub struct Clue;

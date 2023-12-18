@@ -1,3 +1,6 @@
+
+set -e
+
 #rustup target add wasm32-unknown-unknown
 rm -rf target/itch.io
 mkdir target/itch.io

@@ -2,6 +2,10 @@ use std::f32::consts::PI;
 
 use crate::{
     components::{
+        ants::{
+            goal::AntGoal, live_ants::LiveAntBundle, movement::position::AntPositionKind,
+            movement::AntMovement, AntColorKind, AntStyle,
+        },
         nav_mesh::NavNode,
         pheromones::{concentrations::PheromoneConcentrations, PheromoneConfig, PheromoneKind},
     },
@@ -15,11 +19,6 @@ use bevy::{ecs::system::EntityCommands, prelude::*, render::view::RenderLayers};
 use bevy_ecs_ldtk::LdtkEntity;
 use bevy_rapier2d::prelude::*;
 use rand::{rngs::ThreadRng, seq::IteratorRandom, thread_rng, Rng};
-
-use super::{
-    dead_ants::DeadAnt, goal::AntGoal, live_ants::LiveAntBundle,
-    movement::position::AntPositionKind, movement::AntMovement, AntColorKind, AntStyle,
-};
 
 #[derive(Bundle)]
 pub struct ZombAntBundle {

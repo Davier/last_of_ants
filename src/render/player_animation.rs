@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::{prelude::*, render::view::RenderLayers};
 
-use crate::{components::player::Player, PLAYER_SIZE, RENDERLAYER_PLAYER};
+use crate::{PLAYER_SIZE, RENDERLAYER_PLAYER};
 
 pub struct PlayerAnimationPlugin;
 impl Plugin for PlayerAnimationPlugin {
@@ -137,10 +137,9 @@ fn update_player_animation(
         &mut PlayerAnimation,
         &mut AnimationTimer,
         &mut TextureAtlasSprite,
-        &Player,
     )>,
 ) {
-    for (mut animation, mut animation_timer, mut sprite, player) in &mut query {
+    for (mut animation, mut animation_timer, mut sprite) in &mut query {
         animation_timer.tick(time.delta());
         if animation_timer.just_finished() {
             if animation.index == animation.get_indices().last {

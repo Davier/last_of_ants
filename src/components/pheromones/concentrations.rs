@@ -1,10 +1,12 @@
 use ::bevy::prelude::*;
 
-use super::{sources::PheromoneSources, N_PHEROMONE_KINDS};
-
-use crate::components::nav_mesh::NavNode;
-
-use super::{gradients::PheromoneGradients, PheromoneConfig};
+use crate::components::{
+    nav_mesh::NavNode,
+    pheromones::{
+        gradients::PheromoneGradients, sources::PheromoneSources, PheromoneConfig,
+        N_PHEROMONE_KINDS,
+    },
+};
 
 #[derive(Component)]
 pub struct PheromoneBuffers {
@@ -32,8 +34,8 @@ impl Default for PheromoneConcentrations {
     }
 }
 
-pub fn init_pheromones(mut commands: Commands, nodes: Query<(Entity, &NavNode), Added<NavNode>>) {
-    for (id, node) in nodes.iter() {
+pub fn init_pheromones(mut commands: Commands, nodes: Query<Entity, Added<NavNode>>) {
+    for id in nodes.iter() {
         commands.entity(id).insert((
             PheromoneConcentrations::default(),
             PheromoneBuffers::default(),

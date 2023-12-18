@@ -1,10 +1,10 @@
 use bevy::prelude::*;
 
-use crate::components::{object::Object, pheromones::PheromoneKind};
-
-use self::position::AntPositionKind;
-
-use super::{goal::AntGoal, zombants::ZombAntQueen};
+use crate::components::{
+    ants::{goal::AntGoal, movement::position::AntPositionKind, zombants::ZombAntQueen},
+    object::Object,
+    pheromones::PheromoneKind,
+};
 
 pub mod direction;
 pub mod position;
@@ -24,7 +24,7 @@ impl AntMovement {
         &mut self,
         /*commands: &mut Commands, FIXME breaks trait for `.chain` in lib */
         object_id: Entity,
-        mut object: &mut Object,
+        object: &mut Object,
     ) {
         match object.kind {
             PheromoneKind::Storage => self
@@ -32,14 +32,13 @@ impl AntMovement {
                 .reached_storage_target(object, &mut self.direction),
             PheromoneKind::Food => {
                 self.goal
-                    .reached_food_target(object_id, &mut object, &mut self.direction)
+                    .reached_food_target(object_id, object, &mut self.direction)
             } /*commands,*/
             _ => (),
         }
     }
 
-    pub fn reached_zombqueen(&mut self, mut zombqueen: &mut ZombAntQueen) {
-        self.goal
-            .reached_zombqueen(&mut self.direction, &mut zombqueen);
+    pub fn reached_zombqueen(&mut self, zombqueen: &mut ZombAntQueen) {
+        self.goal.reached_zombqueen(&mut self.direction, zombqueen);
     }
 }

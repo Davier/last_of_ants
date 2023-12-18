@@ -2,13 +2,12 @@ use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::{
+    components::ants::movement::AntMovement,
     components::nav_mesh::NavNode,
     render::render_ant::{AntMaterial, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP},
     resources::nav_mesh_lut::NavMeshLUT,
     ANT_SIZE, ANT_WALL_CLIPPING, TILE_SIZE, WALL_Z_FACTOR,
 };
-
-use super::AntMovement;
 
 #[derive(Debug, Clone, Copy, Reflect)]
 pub enum AntPositionKind {

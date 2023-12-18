@@ -5,16 +5,15 @@ use bevy_rapier2d::prelude::*;
 use rand::{rngs::ThreadRng, Rng};
 
 use crate::{
+    components::ants::{
+        goal::AntGoal, movement::position::AntPositionKind, movement::AntMovement, AntColorKind,
+        AntStyle,
+    },
     components::nav_mesh::NavNode,
     render::render_ant::{AntMaterialBundle, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D},
     ANT_SIZE, ANT_WALL_CLIPPING, COLLISION_GROUP_ANTS, COLLISION_GROUP_EXPLOSION,
     COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, RENDERLAYER_ANTS, TILE_SIZE,
     WALL_Z_FACTOR,
-};
-
-use super::{
-    goal::AntGoal, movement::position::AntPositionKind, movement::AntMovement, AntColorKind,
-    AntStyle,
 };
 
 #[derive(Debug, Clone, Copy, Component, Reflect)]

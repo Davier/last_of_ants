@@ -2,11 +2,7 @@
 
 use std::f32::consts::PI;
 
-use bevy::{
-    diagnostic::FrameTimeDiagnosticsPlugin,
-    prelude::*,
-    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
-};
+use bevy::{diagnostic::FrameTimeDiagnosticsPlugin, prelude::*, sprite::MaterialMesh2dBundle};
 use last_of_ants::{
     components::ants::{
         goal::AntGoal,
@@ -14,8 +10,10 @@ use last_of_ants::{
         movement::{position::AntPositionKind, AntMovement},
         AntColorKind, AntStyle,
     },
-    render::render_ant::{AntMaterial, AntMaterialPlugin},
-    ANT_SIZE,
+    helpers::on_key_just_pressed,
+    render::render_ant::{
+        AntMaterial, AntMaterialPlugin, ANT_MATERIAL_SIDE, ANT_MATERIAL_TOP, ANT_MESH2D,
+    },
 };
 use rand::Rng;
 
@@ -31,30 +29,25 @@ fn main() {
             // WorldInspectorPlugin::default(),
         ))
         .add_systems(Startup, setup)
-        .add_systems(Update, move_forward)
+        .add_systems(
+            Update,
+            (
+                move_forward,
+                spawn.run_if(on_key_just_pressed(KeyCode::Space)),
+            ),
+        )
         .run();
 }
 
-// Setup a simple 2d scene
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<AntMaterial>>,
-) {
+fn setup(mut commands: Commands) {
     // camera
     let mut camera = Camera2dBundle::default();
     camera.projection.scale = 0.2;
     commands.spawn(camera);
+}
 
+fn spawn(mut commands: Commands) {
     let mut rng = rand::thread_rng();
-    let mesh: Mesh2dHandle = meshes
-        .add(Mesh::from(shape::Quad {
-            size: ANT_SIZE,
-            flip: false,
-        }))
-        .into();
-    let material_side: Handle<AntMaterial> = materials.add(AntMaterial::new(true, true, false));
-    let material_top: Handle<AntMaterial> = materials.add(AntMaterial::new(false, true, false));
     for _ in 0..10 {
         let angle = rng.gen::<f32>() * 2. * PI;
         let direction = Vec3::new(angle.cos(), angle.sin(), 0.);
@@ -67,20 +60,20 @@ fn setup(
         );
         let material = if is_side {
             transform.translation.z = 1.;
-            material_side.clone()
+            ANT_MATERIAL_SIDE
         } else {
-            material_top.clone()
+            ANT_MATERIAL_TOP
         };
-        // let color_primary_kind = AntColorKind::YELLOW;
-        // let color_secondary_kind = AntColorKind::BLACK;
-        let color_primary_kind = AntColorKind::new_random(&mut rng);
-        let color_secondary_kind =
-            AntColorKind::new_random_from_primary(&mut rng, &color_primary_kind);
+        let color_primary_kind = AntColorKind::BLACK;
+        let color_secondary_kind = AntColorKind::BLACK;
+        // let color_primary_kind = AntColorKind::new_random(&mut rng);
+        // let color_secondary_kind =
+        //     AntColorKind::new_random_from_primary(&mut rng, &color_primary_kind);
         let color_primary = color_primary_kind.generate_color(&mut rng);
         let color_secondary = color_secondary_kind.generate_color(&mut rng);
         commands.spawn((
             MaterialMesh2dBundle {
-                mesh: mesh.clone(),
+                mesh: ANT_MESH2D,
                 transform,
                 material,
                 ..default()

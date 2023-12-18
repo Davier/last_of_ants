@@ -200,12 +200,7 @@ pub const RENDERLAYER_CLUE_ANT: RenderLayers = RenderLayers::layer(3);
 pub const CLUE_COLOR: Color = Color::rgb_linear(1., 0.6, 0.);
 
 fn debug_pheromones(
-    mut query_nodes: Query<(
-        Entity,
-        &NavNode,
-        &mut PheromoneConcentrations,
-        &PheromoneGradients,
-    )>,
+    mut query_nodes: Query<(Entity, &mut PheromoneConcentrations, &PheromoneGradients)>,
     query_transform: Query<&GlobalTransform, With<NavNode>>,
     phcfg: Res<PheromoneConfig>,
     mut gizmos: Gizmos,
@@ -224,7 +219,7 @@ fn debug_pheromones(
         // debug!("Cursor at: {:?}", cursor_world_position);
         let mut distances = query_nodes
             .iter_mut()
-            .map(|(id, _, ph, gd)| {
+            .map(|(id, ph, gd)| {
                 let pos = query_transform.get(id).unwrap().translation().xy();
                 (id, pos, pos.distance(cursor_world_position), ph, gd)
             })
@@ -251,7 +246,7 @@ fn debug_pheromones(
         }
     }
 
-    for (e, n, ph, g) in query_nodes.iter() {
+    for (e, ph, g) in query_nodes.iter() {
         let t = query_transform.get(e).unwrap();
 
         for i in 0..N_PHEROMONE_KINDS {

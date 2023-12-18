@@ -5,19 +5,19 @@ use bevy_ecs_ldtk::prelude::*;
 use bevy_rapier2d::prelude::*;
 
 use crate::{
-    render::player_animation::PlayerAnimationBundle, resources::clues::ClueEvent,
+    components::{
+        ants::{
+            dead_ants::DeadAntBundle,
+            movement::{position::AntPositionKind, AntMovement},
+            AntStyle,
+        },
+        clues::Clue,
+        nav_mesh::NavNode,
+    },
+    render::player_animation::PlayerAnimationBundle,
+    resources::clues::ClueEvent,
     COLLISION_GROUP_ANTS, COLLISION_GROUP_CLUE, COLLISION_GROUP_DEAD_ANTS, COLLISION_GROUP_PLAYER,
     COLLISION_GROUP_PLAYER_SENSOR, COLLISION_GROUP_WALLS, PLAYER_SIZE, RENDERLAYER_PLAYER,
-};
-
-use super::{
-    ants::{
-        dead_ants::DeadAntBundle,
-        movement::{position::AntPositionKind, AntMovement},
-        AntStyle,
-    },
-    clues::Clue,
-    nav_mesh::NavNode,
 };
 
 #[derive(Bundle)]
@@ -98,10 +98,7 @@ pub fn update_player_sensor(
                         .spawn(DeadAntBundle::new(*ant_transform, *ant_style))
                         .set_parent(ant_parent.get());
                     // Despawn the alive ant
-                    commands
-                        .entity(ant_parent.get())
-                        .remove_children(&[colliding_entity]);
-                    commands.entity(colliding_entity).despawn();
+                    commands.entity(colliding_entity).remove_parent().despawn();
                 }
             // Collision with wall
             } else if let Ok(nav_node) = nav_nodes.get(colliding_entity) {

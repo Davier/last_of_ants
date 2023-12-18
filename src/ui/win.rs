@@ -8,7 +8,7 @@ pub fn display_win(
     entities: Query<Entity, Without<Window>>,
     win: Query<&WinText>,
 ) {
-    if let Err(_) = win.get_single() {
+    if win.get_single().is_err() {
         for entity in entities.iter() {
             commands.entity(entity).despawn();
         }

@@ -1,9 +1,12 @@
 use bevy::prelude::*;
 use bevy::reflect::Reflect;
 
-use crate::components::{nav_mesh::NavNode, object::Object, pheromones::PheromoneKind};
-
-use super::{job::Job, movement::AntMovement, zombants::ZombAntQueen};
+use crate::components::{
+    ants::{job::Job, movement::AntMovement, zombants::ZombAntQueen},
+    nav_mesh::NavNode,
+    object::Object,
+    pheromones::PheromoneKind,
+};
 
 #[derive(Default, Debug, Clone, Copy, Reflect)]
 pub struct AntGoal {
@@ -15,7 +18,7 @@ impl AntGoal {
     pub fn reached_food_target(
         &mut self,
         // commands: &mut Commands,
-        object_id: Entity,
+        _object_id: Entity,
         object: &mut Object,
         direction: &mut Vec3,
     ) {
@@ -36,14 +39,11 @@ impl AntGoal {
     }
 
     pub fn reached_zombqueen(&mut self, direction: &mut Vec3, zombqueen: &mut ZombAntQueen) {
-        match self.job {
-            Job::Offering => {
-                self.job = Job::Thief;
-                self.holds = 0.0;
-                zombqueen.holds += 2.;
-                *direction *= -1.;
-            }
-            _ => (),
+        if let Job::Offering = self.job {
+            self.job = Job::Thief;
+            self.holds = 0.0;
+            zombqueen.holds += 2.;
+            *direction *= -1.;
         }
     }
 
@@ -83,9 +83,8 @@ pub fn update_metrics(
 ) {
     metrics.food = 0.;
     for object in objects.iter() {
-        match object.kind {
-            PheromoneKind::Storage => metrics.food += object.quantity.unwrap_or_default(),
-            _ => (),
+        if let PheromoneKind::Storage = object.kind {
+            metrics.food += object.quantity.unwrap_or_default()
         }
     }
 
